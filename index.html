@@ -8,7 +8,6 @@
 <style>
 :root{
   --azul:#2563eb;
-  --azul-escuro:#1e3a8a;
   --bg:#0f172a;
   --branco:#f1f5f9;
 }
@@ -25,7 +24,7 @@ body{
   color:var(--branco);
 }
 
-/* MENU */
+/* HEADER */
 header{
   position:fixed;
   width:100%;
@@ -38,15 +37,16 @@ header{
   z-index:1000;
 }
 
-header h1{
-  color:var(--azul);
+.logo-menu{
+  width:50px;
+  filter: drop-shadow(0 0 5px #2563eb);
 }
 
 nav a{
-  color:var(--branco);
+  color:white;
   margin-left:20px;
   text-decoration:none;
-  transition:.3s;
+  cursor:pointer;
 }
 
 nav a:hover{
@@ -60,22 +60,22 @@ nav a:hover{
   flex-direction:column;
   justify-content:center;
   align-items:center;
-  text-align:center;
-  padding-top:80px;
 }
 
-.hero img{
-  width:280px;
-  margin-bottom:20px;
+.logo-neon{
+  width:300px;
+  animation: glow 2s infinite alternate;
 }
 
-.hero h2{
-  font-size:2.5rem;
-}
-
-.hero p{
-  margin-top:10px;
-  opacity:.7;
+@keyframes glow{
+  from{
+    filter: drop-shadow(0 0 5px #2563eb)
+            drop-shadow(0 0 10px #2563eb);
+  }
+  to{
+    filter: drop-shadow(0 0 20px #60a5fa)
+            drop-shadow(0 0 40px #3b82f6);
+  }
 }
 
 /* SEÇÕES */
@@ -87,9 +87,8 @@ section{
 
 .titulo{
   text-align:center;
-  margin-bottom:40px;
-  font-size:2rem;
   color:var(--azul);
+  margin-bottom:30px;
 }
 
 /* SERVIÇOS */
@@ -103,39 +102,51 @@ section{
   background:#020617;
   padding:20px;
   border-radius:10px;
-  transition:.3s;
 }
 
-.card:hover{
-  transform:translateY(-5px);
-  border:1px solid var(--azul);
+/* LOGIN */
+.login{
+  display:none;
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
 }
 
-/* CONTATO */
-.contato input,
-.contato textarea{
+.login-box{
+  background:#020617;
+  padding:30px;
+  border-radius:10px;
+  width:300px;
+  text-align:center;
+}
+
+.login-box input{
   width:100%;
   padding:10px;
   margin-bottom:10px;
-  border:none;
-  border-radius:5px;
 }
 
-.contato button{
-  width:100%;
-  padding:10px;
-  background:var(--azul);
-  border:none;
+/* WHATSAPP */
+.whatsapp{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:#25d366;
   color:white;
-  cursor:pointer;
-  border-radius:5px;
+  font-size:25px;
+  padding:15px;
+  border-radius:50%;
+  text-decoration:none;
 }
 
+/* FOOTER */
 footer{
   text-align:center;
   padding:20px;
   background:#020617;
-  margin-top:40px;
 }
 </style>
 
@@ -143,67 +154,84 @@ footer{
 <body>
 
 <header>
-  <h1>RomTech</h1>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <img src="https://raw.githubusercontent.com/romttech/sistem/refs/heads/main/logo%20rom.png" class="logo-menu">
+    <h2>RomTech</h2>
+  </div>
+
   <nav>
     <a href="#home">Início</a>
     <a href="#servicos">Serviços</a>
     <a href="#sobre">Sobre</a>
-    <a href="#contato">Contato</a>
+    <a onclick="abrirLogin()">Acesso Parceiro</a>
   </nav>
 </header>
 
 <section class="hero" id="home">
-  <img src="logo.png" alt="RomTech Logo">
-  <h2>Tecnologia & Segurança</h2>
+  <img src="https://raw.githubusercontent.com/romttech/sistem/refs/heads/main/logo%20rom.png" class="logo-neon">
+  <h1>Tecnologia & Segurança</h1>
   <p>Soluções inteligentes para sua empresa</p>
 </section>
 
 <section id="servicos">
-  <div class="titulo">Nossos Serviços</div>
+  <h2 class="titulo">Serviços</h2>
   <div class="servicos">
-    <div class="card">
-      <h3>Suporte Técnico</h3>
-      <p>Manutenção e suporte em computadores e servidores.</p>
-    </div>
-
-    <div class="card">
-      <h3>Segurança da Informação</h3>
-      <p>Proteção de dados e redes corporativas.</p>
-    </div>
-
-    <div class="card">
-      <h3>Infraestrutura</h3>
-      <p>Montagem e gestão de redes e sistemas.</p>
-    </div>
-
-    <div class="card">
-      <h3>Consultoria</h3>
-      <p>Melhore a performance da sua empresa com TI.</p>
-    </div>
+    <div class="card">Suporte Técnico</div>
+    <div class="card">Segurança da Informação</div>
+    <div class="card">Infraestrutura</div>
+    <div class="card">Consultoria</div>
   </div>
 </section>
 
 <section id="sobre">
-  <div class="titulo">Sobre a RomTech</div>
-  <p style="text-align:center; max-width:700px; margin:auto;">
-    A RomTech é especializada em tecnologia e segurança, oferecendo soluções completas
-    para empresas que buscam estabilidade, proteção e inovação em seus sistemas.
+  <h2 class="titulo">Sobre</h2>
+  <p style="text-align:center;">
+    A RomTech oferece soluções completas em tecnologia e segurança para empresas.
   </p>
 </section>
 
-<section id="contato">
-  <div class="titulo">Contato</div>
-  <div class="contato" style="max-width:500px; margin:auto;">
-    <input type="text" placeholder="Seu nome">
-    <input type="email" placeholder="Seu email">
-    <textarea rows="5" placeholder="Mensagem"></textarea>
-    <button>Enviar</button>
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-box">
+    <h2>Acesso Parceiro</h2>
+    <input type="text" id="user" placeholder="Usuário">
+    <input type="password" id="pass" placeholder="Senha">
+    <button onclick="login()">Entrar</button>
+    <br><br>
+    <button onclick="fecharLogin()">Fechar</button>
   </div>
-</section>
+</div>
+
+<!-- WHATSAPP -->
+<a href="https://w.app/pvb54x" class="whatsapp" target="_blank">
+  💬
+</a>
 
 <footer>
   Desenvolvido por <strong>RomTech</strong> • Uso exclusivo
 </footer>
+
+<script>
+function abrirLogin(){
+  document.getElementById("login").style.display="flex";
+}
+
+function fecharLogin(){
+  document.getElementById("login").style.display="none";
+}
+
+function login(){
+  let u = document.getElementById("user").value;
+  let p = document.getElementById("pass").value;
+
+  if(u === "admin" && p === "123"){
+    alert("Login realizado!");
+    fecharLogin();
+  } else {
+    alert("Dados inválidos");
+  }
+}
+</script>
 
 </body>
 </html>
