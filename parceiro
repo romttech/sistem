@@ -121,11 +121,11 @@ button:hover{
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
 
 <script>
-// 🔥 COLE SUA CONFIG AQUI
+// FIREBASE
 const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_ID"
+  apiKey: "AIzaSyDfQt664GIBA50jCfi7wYxUour3kmES424",
+  authDomain: "siteromtech.firebaseapp.com",
+  projectId: "siteromtech"
 };
 
 firebase.initializeApp(firebaseConfig);
