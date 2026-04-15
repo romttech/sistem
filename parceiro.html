@@ -98,11 +98,11 @@ function acao(){
   let email = document.getElementById("email").value;
   let senha = document.getElementById("senha").value;
 
-  if(loginMode){
-    auth.signInWithEmailAndPassword(email, senha)
-      .then(()=>{
-        window.location = "painel.html";
-      })
+ if(email === "admin@ultra.com"){
+  window.location = "admin.html";
+} else {
+  window.location = "painel.html";
+}
       .catch(err=>alert(err.message));
   } else {
     auth.createUserWithEmailAndPassword(email, senha)
