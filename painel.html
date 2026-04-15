@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Cliente - RomTech</title>
+
+<style>
+body{
+  background:#0f172a;
+  color:white;
+  font-family:Arial;
+}
+
+header{
+  background:#020617;
+  padding:15px;
+  text-align:center;
+}
+
+.logout{
+  position:absolute;
+  right:20px;
+  top:15px;
+  background:red;
+  padding:5px 10px;
+  border:none;
+  color:white;
+  cursor:pointer;
+}
+
+.container{
+  max-width:900px;
+  margin:20px auto;
+}
+
+/* FORM */
+.form{
+  background:#020617;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+
+input, textarea{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border:none;
+  border-radius:5px;
+}
+
+button{
+  padding:10px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+.enviar{
+  background:#2563eb;
+  color:white;
+}
+
+/* CHAMADOS */
+.card{
+  background:#020617;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+.status{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.aberto{ color:orange; }
+.andamento{ color:yellow; }
+.finalizado{ color:lightgreen; }
+
+</style>
+</head>
+
+<body>
+
+<header>
+  Painel do Cliente
+  <button class="logout" onclick="logout()">Sair</button>
+</header>
+
+<div class="container">
+
+  <!-- ABRIR CHAMADO -->
+  <div class="form">
+    <h3>Abrir Chamado</h3>
+    <input id="titulo" placeholder="Título">
+    <textarea id="descricao" placeholder="Descreva o problema"></textarea>
+    <button class="enviar" onclick="abrirChamado()">Enviar</button>
+  </div>
+
+  <!-- LISTA -->
+  <div id="lista"></div>
+
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDfQt664GIBA50jCfi7wYxUour3kmES424",
+  authDomain: "siteromtech.firebaseapp.com",
+  projectId: "siteromtech",
+  storageBucket: "siteromtech.firebasestorage.app",
+  messagingSenderId: "1035126772181",
+  appId: "1:1035126772181:web:f595d7d98af6afc2a22d5c"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// 🔐 PROTEÇÃO
+auth.onAuthStateChanged(user=>{
+  if(user){
+    carregarChamados(user.email);
+  } else {
+    window.location = "parceiro.html";
+  }
+});
+
+// 🚪 LOGOUT
+function logout(){
+  auth.signOut();
+}
+
+// 📦 ABRIR CHAMADO
+function abrirChamado(){
+  let titulo = document.getElementById("titulo").value;
+  let descricao = document.getElementById("descricao").value;
+
+  let user = auth.currentUser;
+
+  if(!titulo || !descricao){
+    alert("Preencha os campos");
+    return;
+  }
+
+  db.collection("chamados").add({
+    titulo: titulo,
+    descricao: descricao,
+    status: "aberto",
+    user: user.email,
+    data: new Date()
+  });
+
+  document.getElementById("titulo").value = "";
+  document.getElementById("descricao").value = "";
+
+  alert("Chamado enviado!");
+}
+
+// 📊 LISTAR CHAMADOS
+function carregarChamados(email){
+  db.collection("chamados")
+    .where("user","==",email)
+    .orderBy("data","desc")
+    .onSnapshot(snapshot=>{
+
+      let html = "";
+
+      snapshot.forEach(doc=>{
+        let c = doc.data();
+
+        html += `
+          <div class="card">
+            <h3>${c.titulo}</h3>
+            <p>${c.descricao}</p>
+            <div class="status ${c.status}">
+              Status: ${c.status}
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById("lista").innerHTML = html;
+    });
+}
+</script>
+
+</body>
+</html>
