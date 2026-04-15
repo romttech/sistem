@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RomTech - Painel Admin</title>
+
+<style>
+:root{
+  --azul:#2563eb;
+  --bg:#0f172a;
+  --card:#020617;
+  --branco:#f1f5f9;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial, sans-serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--branco);
+}
+
+/* HEADER */
+header{
+  background:#020617;
+  padding:15px;
+  text-align:center;
+  font-size:20px;
+}
+
+/* CONTAINER */
+.container{
+  max-width:1000px;
+  margin:40px auto;
+  padding:20px;
+}
+
+/* CARD */
+.chamado{
+  background:var(--card);
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:15px;
+  border-left:5px solid var(--azul);
+}
+
+.status{
+  margin-top:10px;
+  font-size:14px;
+  opacity:.8;
+}
+
+/* BOTÕES */
+button{
+  margin-top:10px;
+  margin-right:5px;
+  padding:8px 12px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+.andamento{ background:#f59e0b; color:#000; }
+.finalizado{ background:#22c55e; color:#000; }
+.logout{ background:#ef4444; color:white; float:right; }
+
+/* LOGIN */
+.login{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.login-box{
+  background:var(--card);
+  padding:30px;
+  border-radius:10px;
+  width:300px;
+  text-align:center;
+}
+
+.login-box input{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-box">
+    <h2>Admin RomTech</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="senha" placeholder="Senha">
+    <button onclick="login()">Entrar</button>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div id="painel" style="display:none;">
+  <header>
+    Painel Administrativo
+    <button class="logout" onclick="logout()">Sair</button>
+  </header>
+
+  <div class="container" id="lista"></div>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+
+<script>
+// CONFIG FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyDfQt664GIBA50jCfi7wYxUour3kmES424",
+  authDomain: "siteromtech.firebaseapp.com",
+  projectId: "siteromtech"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// LOGIN
+function login(){
+  let email = document.getElementById("email").value;
+  let senha = document.getElementById("senha").value;
+
+  auth.signInWithEmailAndPassword(email, senha)
+    .then(()=>{
+      iniciarPainel();
+    })
+    .catch(err=>alert(err.message));
+}
+
+// LOGOUT
+function logout(){
+  auth.signOut();
+  location.reload();
+}
+
+// INICIAR PAINEL
+function iniciarPainel(){
+  document.getElementById("login").style.display="none";
+  document.getElementById("painel").style.display="block";
+
+  carregarChamados();
+}
+
+// LISTAR CHAMADOS
+function carregarChamados(){
+  db.collection("chamados")
+    .orderBy("data", "desc")
+    .onSnapshot(snapshot => {
+
+      let html = "";
+
+      snapshot.forEach(doc => {
+        let c = doc.data();
+
+        html += `
+          <div class="chamado">
+            <h3>${c.titulo}</h3>
+            <p>${c.descricao}</p>
+            <div class="status">Status: ${c.status}</div>
+
+            <button class="andamento" onclick="mudarStatus('${doc.id}','andamento')">
+              Em andamento
+            </button>
+
+            <button class="finalizado" onclick="mudarStatus('${doc.id}','finalizado')">
+              Finalizar
+            </button>
+          </div>
+        `;
+      });
+
+      document.getElementById("lista").innerHTML = html;
+    });
+}
+
+// ALTERAR STATUS
+function mudarStatus(id, status){
+  db.collection("chamados").doc(id).update({
+    status: status
+  });
+}
+
+// AUTO LOGIN
+auth.onAuthStateChanged(user => {
+  if(user){
+    iniciarPainel();
+  }
+});
+</script>
+
+</body>
+</html>
