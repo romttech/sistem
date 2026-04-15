@@ -124,9 +124,9 @@ button{
 <script>
 // CONFIG FIREBASE
 const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_ID"
+  apiKey: "AIzaSyDfQt664GIBA50jCfi7wYxUour3kmES424",
+  authDomain: "siteromtech.firebaseapp.com",
+  projectId: "siteromtech"
 };
 
 firebase.initializeApp(firebaseConfig);
