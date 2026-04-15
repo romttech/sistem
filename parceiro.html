@@ -3,164 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RomTech - Portal do Parceiro</title>
+<title>Portal do Parceiro - RomTech</title>
 
 <style>
-:root{
-  --azul:#2563eb;
-  --bg:#0f172a;
-  --card:#020617;
-  --branco:#f1f5f9;
-}
-
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:Arial, sans-serif;
-}
-
 body{
-  background:var(--bg);
-  color:var(--branco);
+  background:#0f172a;
+  color:white;
   display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
+  font-family:Arial;
 }
 
-/* CONTAINER */
-.container{
-  background:var(--card);
+.box{
+  background:#020617;
   padding:30px;
-  border-radius:12px;
-  width:350px;
+  border-radius:10px;
+  width:320px;
   text-align:center;
-  box-shadow:0 0 20px rgba(0,0,0,0.5);
 }
 
-/* LOGO */
-.logo{
-  width:120px;
-  margin-bottom:20px;
-  animation: glow 2s infinite alternate;
-}
-
-@keyframes glow{
-  from{
-    filter: drop-shadow(0 0 5px #2563eb);
-  }
-  to{
-    filter: drop-shadow(0 0 20px #3b82f6);
-  }
-}
-
-/* INPUT */
 input{
   width:100%;
-  padding:12px;
-  margin-bottom:10px;
+  padding:10px;
+  margin:5px 0;
   border:none;
-  border-radius:6px;
+  border-radius:5px;
 }
 
-/* BUTTON */
 button{
   width:100%;
-  padding:12px;
-  background:var(--azul);
+  padding:10px;
+  background:#2563eb;
   border:none;
   color:white;
-  border-radius:6px;
+  border-radius:5px;
   cursor:pointer;
-  margin-top:5px;
 }
 
-button:hover{
-  background:#1e40af;
-}
-
-/* TOGGLE */
 .toggle{
   margin-top:10px;
-  font-size:14px;
   cursor:pointer;
   color:#60a5fa;
-}
-
-/* RESPONSIVO */
-@media(max-width:400px){
-  .container{
-    width:90%;
-  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-
-  <img src="https://raw.githubusercontent.com/romttech/sistem/refs/heads/main/logo%20rom.png" class="logo">
-
+<div class="box">
   <h2 id="titulo">Acesso Parceiro</h2>
 
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="senha" placeholder="Senha">
 
-  <button onclick="login()" id="btn">Entrar</button>
+  <button onclick="acao()" id="btn">Entrar</button>
 
-  <div class="toggle" onclick="toggleModo()">
-    Criar conta
-  </div>
-
+  <div class="toggle" onclick="toggle()">Criar conta</div>
 </div>
 
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+<!-- FIREBASE CORRETO -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyDfQt664GIBA50jCfi7wYxUour3kmES424",
   authDomain: "siteromtech.firebaseapp.com",
-  projectId: "siteromtech"
+  projectId: "siteromtech",
+  storageBucket: "siteromtech.firebasestorage.app",
+  messagingSenderId: "1035126772181",
+  appId: "1:1035126772181:web:f595d7d98af6afc2a22d5c"
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 
-// CONTROLE DE MODO
-let modoLogin = true;
+let loginMode = true;
 
-function toggleModo(){
-  modoLogin = !modoLogin;
+function toggle(){
+  loginMode = !loginMode;
 
   document.getElementById("titulo").innerText =
-    modoLogin ? "Acesso Parceiro" : "Criar Conta";
+    loginMode ? "Acesso Parceiro" : "Criar Conta";
 
   document.getElementById("btn").innerText =
-    modoLogin ? "Entrar" : "Cadastrar";
+    loginMode ? "Entrar" : "Cadastrar";
 }
 
-// LOGIN / CADASTRO
-function login(){
+function acao(){
   let email = document.getElementById("email").value;
   let senha = document.getElementById("senha").value;
 
-  if(modoLogin){
+  if(loginMode){
     auth.signInWithEmailAndPassword(email, senha)
       .then(()=>{
-        alert("Login realizado!");
         window.location = "painel.html";
       })
       .catch(err=>alert(err.message));
   } else {
     auth.createUserWithEmailAndPassword(email, senha)
-      .then(()=>{
-        alert("Conta criada!");
-      })
+      .then(()=>alert("Conta criada com sucesso"))
       .catch(err=>alert(err.message));
   }
 }
