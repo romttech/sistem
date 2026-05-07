@@ -26,9 +26,25 @@ body{
     align-items:center;
 }
 
+.header-actions{
+    display:flex;
+    gap:15px;
+    align-items:center;
+}
+
 .header a{
     color:white;
     text-decoration:none;
+    font-weight:bold;
+}
+
+.logout{
+    background:#ef4444;
+    border:none;
+    color:white;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
     font-weight:bold;
 }
 
@@ -108,7 +124,11 @@ th{
 
 <div class="header">
     <h2>Controle de Upgrades</h2>
-    <a href="dashboard.html">← Voltar Dashboard</a>
+
+    <div class="header-actions">
+        <a href="dashboard.html">← Dashboard</a>
+        <button class="logout" onclick="logout()">Sair</button>
+    </div>
 </div>
 
 <div class="container">
@@ -163,6 +183,7 @@ th{
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
@@ -176,102 +197,142 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
 const db = firebase.firestore();
 
-carregarComputadores();
-listarUpgrades();
+auth.onAuthStateChanged(user=>{
+    if(!user){
+        window.location.href = "index.html";
+    }else{
+        carregarComputadores();
+        listarUpgrades();
+    }
+});
 
 async function carregarComputadores(){
-    const snapshot = await db.collection("computadores").get();
-    const select = document.getElementById("pcSelect");
+    try{
+        const snapshot = await db.collection("computadores").get();
+        const select = document.getElementById("pcSelect");
 
-    snapshot.forEach(doc=>{
-        const pc = doc.data();
+        select.innerHTML = '<option value="">Selecione o Computador</option>';
 
-        select.innerHTML += `
-            <option value="${doc.id}">
-                ${pc.patrimonio} - ${pc.nomePC}
-            </option>
-        `;
-    });
+        snapshot.forEach(doc=>{
+            const pc = doc.data();
+
+            select.innerHTML += `
+                <option value="${doc.id}">
+                    ${pc.patrimonio} - ${pc.nomePC}
+                </option>
+            `;
+        });
+
+    }catch(error){
+        console.error(error);
+        alert("Erro ao carregar computadores.");
+    }
 }
 
 async function salvarUpgrade(){
-    const data = {
-        pcId: document.getElementById("pcSelect").value,
-        tipoUpgrade: document.getElementById("tipoUpgrade").value,
-        statusUpgrade: document.getElementById("statusUpgrade").value,
-        responsavel: document.getElementById("responsavel").value,
-        observacao: document.getElementById("observacaoUpgrade").value,
-        dataSolicitacao: new Date().toLocaleString()
-    };
+    try{
+        const data = {
+            pcId: document.getElementById("pcSelect").value,
+            tipoUpgrade: document.getElementById("tipoUpgrade").value,
+            statusUpgrade: document.getElementById("statusUpgrade").value,
+            responsavel: document.getElementById("responsavel").value,
+            observacao: document.getElementById("observacaoUpgrade").value,
+            dataSolicitacao: new Date().toLocaleString()
+        };
 
-    await db.collection("upgrades").add(data);
-    alert("Upgrade registrado com sucesso!");
-    location.reload();
+        await db.collection("upgrades").add(data);
+
+        alert("Upgrade registrado com sucesso!");
+        location.reload();
+
+    }catch(error){
+        console.error(error);
+        alert("Erro ao registrar upgrade.");
+    }
 }
 
 async function listarUpgrades(){
-    const snapshot = await db.collection("upgrades").get();
-    const tbody = document.getElementById("listaUpgrades");
-    tbody.innerHTML = "";
+    try{
+        const snapshot = await db.collection("upgrades").get();
+        const tbody = document.getElementById("listaUpgrades");
+        tbody.innerHTML = "";
 
-    for(const doc of snapshot.docs){
-        const upgrade = doc.data();
+        for(const doc of snapshot.docs){
+            const upgrade = doc.data();
+            let nomePC = "-";
 
-        let nomePC = "-";
+            if(upgrade.pcId){
+                const pcDoc = await db.collection("computadores").doc(upgrade.pcId).get();
 
-        if(upgrade.pcId){
-            const pcDoc = await db.collection("computadores").doc(upgrade.pcId).get();
-            if(pcDoc.exists){
-                const pc = pcDoc.data();
-                nomePC = pc.patrimonio + " - " + pc.nomePC;
+                if(pcDoc.exists){
+                    const pc = pcDoc.data();
+                    nomePC = pc.patrimonio + " - " + pc.nomePC;
+                }
             }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${nomePC}</td>
+                    <td>${upgrade.tipoUpgrade}</td>
+                    <td>${upgrade.statusUpgrade}</td>
+                    <td>${upgrade.responsavel}</td>
+                    <td>${upgrade.dataSolicitacao}</td>
+                    <td>
+                        <button class="update-btn" onclick="alterarStatus('${doc.id}')">
+                            Próximo Status
+                        </button>
+                    </td>
+                </tr>
+            `;
         }
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${nomePC}</td>
-                <td>${upgrade.tipoUpgrade}</td>
-                <td>${upgrade.statusUpgrade}</td>
-                <td>${upgrade.responsavel}</td>
-                <td>${upgrade.dataSolicitacao}</td>
-                <td>
-                    <button class="update-btn"
-                        onclick="alterarStatus('${doc.id}')">
-                        Próximo Status
-                    </button>
-                </td>
-            </tr>
-        `;
+    }catch(error){
+        console.error(error);
+        alert("Erro ao carregar upgrades.");
     }
 }
 
 async function alterarStatus(id){
-    const fluxo = [
-        "Pendente",
-        "Em análise",
-        "Aprovado",
-        "Em andamento",
-        "Concluído"
-    ];
+    try{
+        const fluxo = [
+            "Pendente",
+            "Em análise",
+            "Aprovado",
+            "Em andamento",
+            "Concluído"
+        ];
 
-    const ref = db.collection("upgrades").doc(id);
-    const docSnap = await ref.get();
+        const ref = db.collection("upgrades").doc(id);
+        const docSnap = await ref.get();
 
-    if(!docSnap.exists) return;
+        if(!docSnap.exists) return;
 
-    const atual = docSnap.data().statusUpgrade;
-    let index = fluxo.indexOf(atual);
+        const atual = docSnap.data().statusUpgrade;
+        const index = fluxo.indexOf(atual);
 
-    if(index < fluxo.length - 1){
-        await ref.update({
-            statusUpgrade: fluxo[index + 1]
-        });
-        location.reload();
-    } else {
-        alert("Upgrade já concluído.");
+        if(index < fluxo.length - 1){
+            await ref.update({
+                statusUpgrade: fluxo[index + 1]
+            });
+
+            location.reload();
+        } else {
+            alert("Upgrade já concluído.");
+        }
+
+    }catch(error){
+        console.error(error);
+        alert("Erro ao atualizar status.");
     }
+}
+
+async function logout(){
+    await auth.signOut();
+    window.location.href = "index.html";
 }
 </script>
 
