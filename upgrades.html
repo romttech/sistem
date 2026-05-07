@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upgrades - RomTech Controle</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f1f5f9;
+}
+
+.header{
+    background:#1e3a8a;
+    color:white;
+    padding:20px 30px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.container{
+    padding:30px;
+}
+
+.form-box{
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    margin-bottom:25px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+}
+
+select,input,textarea{
+    width:100%;
+    padding:12px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+}
+
+textarea{
+    resize:none;
+    height:80px;
+}
+
+button{
+    margin-top:20px;
+    padding:14px 20px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+}
+
+th, td{
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #e2e8f0;
+    font-size:14px;
+}
+
+th{
+    background:#1e293b;
+    color:white;
+}
+
+.update-btn{
+    background:#16a34a;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Controle de Upgrades</h2>
+    <a href="dashboard.html">← Voltar Dashboard</a>
+</div>
+
+<div class="container">
+
+    <div class="form-box">
+        <div class="form-grid">
+
+            <select id="pcSelect">
+                <option value="">Selecione o Computador</option>
+            </select>
+
+            <select id="tipoUpgrade">
+                <option value="RAM">RAM</option>
+                <option value="SSD">SSD</option>
+                <option value="Sistema Operacional">Sistema Operacional</option>
+                <option value="Troca Completa">Troca Completa</option>
+            </select>
+
+            <select id="statusUpgrade">
+                <option>Pendente</option>
+                <option>Em análise</option>
+                <option>Aprovado</option>
+                <option>Em andamento</option>
+                <option>Concluído</option>
+                <option>Não necessário</option>
+            </select>
+
+            <input type="text" id="responsavel" placeholder="Responsável">
+
+        </div>
+
+        <br>
+        <textarea id="observacaoUpgrade" placeholder="Observação"></textarea>
+
+        <button onclick="salvarUpgrade()">Registrar Upgrade</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Computador</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Responsável</th>
+                <th>Data</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="listaUpgrades"></tbody>
+    </table>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+  authDomain: "controlegeral-c90c1.firebaseapp.com",
+  projectId: "controlegeral-c90c1",
+  storageBucket: "controlegeral-c90c1.firebasestorage.app",
+  messagingSenderId: "530410393715",
+  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+carregarComputadores();
+listarUpgrades();
+
+async function carregarComputadores(){
+    const snapshot = await db.collection("computadores").get();
+    const select = document.getElementById("pcSelect");
+
+    snapshot.forEach(doc=>{
+        const pc = doc.data();
+
+        select.innerHTML += `
+            <option value="${doc.id}">
+                ${pc.patrimonio} - ${pc.nomePC}
+            </option>
+        `;
+    });
+}
+
+async function salvarUpgrade(){
+    const data = {
+        pcId: document.getElementById("pcSelect").value,
+        tipoUpgrade: document.getElementById("tipoUpgrade").value,
+        statusUpgrade: document.getElementById("statusUpgrade").value,
+        responsavel: document.getElementById("responsavel").value,
+        observacao: document.getElementById("observacaoUpgrade").value,
+        dataSolicitacao: new Date().toLocaleString()
+    };
+
+    await db.collection("upgrades").add(data);
+    alert("Upgrade registrado com sucesso!");
+    location.reload();
+}
+
+async function listarUpgrades(){
+    const snapshot = await db.collection("upgrades").get();
+    const tbody = document.getElementById("listaUpgrades");
+    tbody.innerHTML = "";
+
+    for(const doc of snapshot.docs){
+        const upgrade = doc.data();
+
+        let nomePC = "-";
+
+        if(upgrade.pcId){
+            const pcDoc = await db.collection("computadores").doc(upgrade.pcId).get();
+            if(pcDoc.exists){
+                const pc = pcDoc.data();
+                nomePC = pc.patrimonio + " - " + pc.nomePC;
+            }
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${nomePC}</td>
+                <td>${upgrade.tipoUpgrade}</td>
+                <td>${upgrade.statusUpgrade}</td>
+                <td>${upgrade.responsavel}</td>
+                <td>${upgrade.dataSolicitacao}</td>
+                <td>
+                    <button class="update-btn"
+                        onclick="alterarStatus('${doc.id}')">
+                        Próximo Status
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+async function alterarStatus(id){
+    const fluxo = [
+        "Pendente",
+        "Em análise",
+        "Aprovado",
+        "Em andamento",
+        "Concluído"
+    ];
+
+    const ref = db.collection("upgrades").doc(id);
+    const docSnap = await ref.get();
+
+    if(!docSnap.exists) return;
+
+    const atual = docSnap.data().statusUpgrade;
+    let index = fluxo.indexOf(atual);
+
+    if(index < fluxo.length - 1){
+        await ref.update({
+            statusUpgrade: fluxo[index + 1]
+        });
+        location.reload();
+    } else {
+        alert("Upgrade já concluído.");
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computadores - RomTech Controle</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f1f5f9;
+}
+
+.header{
+    background:#1e3a8a;
+    color:white;
+    padding:20px 30px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.container{
+    padding:30px;
+}
+
+.form-box{
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    margin-bottom:25px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+}
+
+input, select, textarea{
+    width:100%;
+    padding:12px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+}
+
+textarea{
+    resize:none;
+    height:90px;
+}
+
+button{
+    margin-top:20px;
+    padding:14px 20px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+}
+
+th, td{
+    padding:14px;
+    text-align:left;
+    border-bottom:1px solid #e2e8f0;
+    font-size:14px;
+}
+
+th{
+    background:#1e293b;
+    color:white;
+}
+
+.delete-btn{
+    background:#ef4444;
+    padding:8px 12px;
+    border:none;
+    color:white;
+    border-radius:8px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Cadastro de Computadores</h2>
+    <a href="dashboard.html">← Voltar Dashboard</a>
+</div>
+
+<div class="container">
+
+    <div class="form-box">
+        <div class="form-grid">
+            <input type="text" id="patrimonio" placeholder="Patrimônio">
+            <input type="text" id="nomePC" placeholder="Nome do PC">
+            <input type="text" id="processador" placeholder="Processador">
+            <input type="text" id="memoriaRAM" placeholder="Memória RAM">
+            <input type="text" id="armazenamento" placeholder="Armazenamento">
+            <input type="text" id="sistemaOperacional" placeholder="Sistema Operacional">
+            <input type="text" id="serialTag" placeholder="Serial/Tag">
+
+            <select id="loja">
+                <option value="">Selecione a Loja</option>
+            </select>
+        </div>
+
+        <br>
+        <textarea id="observacoes" placeholder="Observações"></textarea>
+
+        <button onclick="salvarComputador()">Cadastrar Computador</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Patrimônio</th>
+                <th>Nome</th>
+                <th>Processador</th>
+                <th>RAM</th>
+                <th>Armazenamento</th>
+                <th>Loja</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="listaComputadores"></tbody>
+    </table>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+  authDomain: "controlegeral-c90c1.firebaseapp.com",
+  projectId: "controlegeral-c90c1",
+  storageBucket: "controlegeral-c90c1.firebasestorage.app",
+  messagingSenderId: "530410393715",
+  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+carregarLojas();
+listarComputadores();
+
+async function carregarLojas(){
+    const snapshot = await db.collection("lojas").where("status","==","ativo").get();
+    const select = document.getElementById("loja");
+
+    snapshot.forEach(doc=>{
+        const loja = doc.data();
+        select.innerHTML += `
+            <option value="${doc.id}">
+                ${loja.codigoLoja} - ${loja.nomeLoja}
+            </option>
+        `;
+    });
+}
+
+async function salvarComputador(){
+    const data = {
+        patrimonio: document.getElementById("patrimonio").value,
+        nomePC: document.getElementById("nomePC").value,
+        processador: document.getElementById("processador").value,
+        memoriaRAM: document.getElementById("memoriaRAM").value,
+        armazenamento: document.getElementById("armazenamento").value,
+        sistemaOperacional: document.getElementById("sistemaOperacional").value,
+        serialTag: document.getElementById("serialTag").value,
+        lojaId: document.getElementById("loja").value,
+        observacoes: document.getElementById("observacoes").value,
+        createdAt: new Date()
+    };
+
+    await db.collection("computadores").add(data);
+    alert("Computador cadastrado com sucesso!");
+    location.reload();
+}
+
+async function listarComputadores(){
+    const snapshot = await db.collection("computadores").get();
+    const tbody = document.getElementById("listaComputadores");
+    tbody.innerHTML = "";
+
+    for(const doc of snapshot.docs){
+        const pc = doc.data();
+
+        let lojaNome = "-";
+
+        if(pc.lojaId){
+            const lojaDoc = await db.collection("lojas").doc(pc.lojaId).get();
+            if(lojaDoc.exists){
+                lojaNome = lojaDoc.data().nomeLoja;
+            }
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${pc.patrimonio}</td>
+                <td>${pc.nomePC}</td>
+                <td>${pc.processador}</td>
+                <td>${pc.memoriaRAM}</td>
+                <td>${pc.armazenamento}</td>
+                <td>${lojaNome}</td>
+                <td>
+                    <button class="delete-btn" onclick="deletar('${doc.id}')">
+                        Excluir
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+async function deletar(id){
+    if(confirm("Deseja excluir este computador?")){
+        await db.collection("computadores").doc(id).delete();
+        location.reload();
+    }
+}
+</script>
+
+</body>
+</html>
