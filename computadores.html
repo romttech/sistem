@@ -24,12 +24,7 @@ body{
     display:flex;
     justify-content:space-between;
     align-items:center;
-}
-
-.header-actions{
-    display:flex;
-    gap:15px;
-    align-items:center;
+    flex-wrap:wrap;
 }
 
 .header a{
@@ -38,21 +33,13 @@ body{
     font-weight:bold;
 }
 
-.logout{
-    background:#ef4444;
-    border:none;
-    color:white;
-    padding:10px 16px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
 .container{
+    max-width:1400px;
+    margin:auto;
     padding:30px;
 }
 
-.form-box{
+.box{
     background:white;
     padding:25px;
     border-radius:16px;
@@ -66,7 +53,7 @@ body{
     gap:15px;
 }
 
-input, select, textarea{
+input,select,textarea{
     width:100%;
     padding:12px;
     border:1px solid #cbd5e1;
@@ -74,35 +61,42 @@ input, select, textarea{
 }
 
 textarea{
+    height:80px;
     resize:none;
-    height:90px;
 }
 
 button{
-    margin-top:20px;
-    padding:14px 20px;
-    background:#2563eb;
-    color:white;
+    padding:12px 18px;
     border:none;
-    border-radius:10px;
+    border-radius:8px;
     cursor:pointer;
+    color:white;
     font-weight:bold;
+}
+
+.btn-save{ background:#2563eb; }
+.btn-delete{ background:#ef4444; }
+.btn-edit{ background:#f59e0b; }
+.btn-view{ background:#10b981; }
+
+.table-container{
+    overflow-x:auto;
+    background:white;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
 }
 
 table{
     width:100%;
+    min-width:1200px;
     border-collapse:collapse;
-    background:white;
-    border-radius:16px;
-    overflow:hidden;
-    box-shadow:0 5px 15px rgba(0,0,0,.08);
 }
 
-th, td{
+th,td{
     padding:14px;
-    text-align:left;
     border-bottom:1px solid #e2e8f0;
-    font-size:14px;
+    text-align:left;
+    white-space:nowrap;
 }
 
 th{
@@ -110,65 +104,105 @@ th{
     color:white;
 }
 
-.delete-btn{
-    background:#ef4444;
-    padding:8px 12px;
-    border:none;
-    color:white;
-    border-radius:8px;
+.actions{
+    display:flex;
+    gap:8px;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+
+.modal-content{
+    background:white;
+    width:90%;
+    max-width:700px;
+    padding:25px;
+    border-radius:16px;
+    max-height:85vh;
+    overflow:auto;
+}
+
+.close{
+    float:right;
     cursor:pointer;
+    font-size:22px;
+    font-weight:bold;
+}
+
+@media(max-width:768px){
+    .container{
+        padding:15px;
+    }
 }
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>Cadastro de Computadores</h2>
-
-    <div class="header-actions">
-        <a href="dashboard.html">← Dashboard</a>
-        <button class="logout" onclick="logout()">Sair</button>
-    </div>
+    <h2>Computadores</h2>
+    <a href="dashboard.html">← Dashboard</a>
 </div>
 
 <div class="container">
 
-    <div class="form-box">
+    <div class="box">
         <div class="form-grid">
-            <input type="text" id="patrimonio" placeholder="Patrimônio">
-            <input type="text" id="nomePC" placeholder="Nome do PC">
-            <input type="text" id="processador" placeholder="Processador">
-            <input type="text" id="memoriaRAM" placeholder="Memória RAM">
-            <input type="text" id="armazenamento" placeholder="Armazenamento">
-            <input type="text" id="sistemaOperacional" placeholder="Sistema Operacional">
-            <input type="text" id="serialTag" placeholder="Serial/Tag">
+            <input id="patrimonio" placeholder="Patrimônio">
+            <input id="nomePC" placeholder="Nome do PC">
+            <input id="processador" placeholder="Processador">
+            <input id="ram" placeholder="RAM">
+            <input id="armazenamento" placeholder="Armazenamento">
+            <input id="sistema" placeholder="Sistema Operacional">
+            <input id="serial" placeholder="Serial/Tag">
 
-            <select id="loja">
-                <option value="">Selecione a Loja</option>
-            </select>
+            <select id="lojaId"></select>
         </div>
 
         <br>
         <textarea id="observacoes" placeholder="Observações"></textarea>
+        <br><br>
 
-        <button onclick="salvarComputador()">Cadastrar Computador</button>
+        <button class="btn-save" onclick="salvarComputador()">Salvar</button>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Patrimônio</th>
-                <th>Nome</th>
-                <th>Processador</th>
-                <th>RAM</th>
-                <th>Armazenamento</th>
-                <th>Loja</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody id="listaComputadores"></tbody>
-    </table>
+    <div class="box">
+        <select id="filtroLoja" onchange="listarComputadores()">
+            <option value="">Todas as lojas</option>
+        </select>
+    </div>
 
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Patrimônio</th>
+                    <th>Nome</th>
+                    <th>Processador</th>
+                    <th>RAM</th>
+                    <th>Armazenamento</th>
+                    <th>Loja</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="listaComputadores"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal" id="modalVisualizar">
+    <div class="modal-content">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h3>Informações do Computador</h3>
+        <br>
+        <div id="detalhesPC"></div>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -179,136 +213,170 @@ th{
 const firebaseConfig = {
   apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
   authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1",
-  storageBucket: "controlegeral-c90c1.firebasestorage.app",
-  messagingSenderId: "530410393715",
-  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
+  projectId: "controlegeral-c90c1"
 };
 
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
 const db = firebase.firestore();
+let editId = null;
 
-auth.onAuthStateChanged(user=>{
-    if(!user){
-        window.location.href = "index.html";
-    }else{
-        carregarLojas();
-        listarComputadores();
-    }
-});
+window.onload = ()=>{
+    carregarLojas();
+    listarComputadores();
+};
 
 async function carregarLojas(){
-    try{
-        const snapshot = await db.collection("lojas")
-            .where("status","==","ativo")
-            .get();
+    const snapshot = await db.collection("lojas").get();
 
-        const select = document.getElementById("loja");
-        select.innerHTML = '<option value="">Selecione a Loja</option>';
+    const select = document.getElementById("lojaId");
+    const filtro = document.getElementById("filtroLoja");
 
-        snapshot.forEach(doc=>{
-            const loja = doc.data();
+    select.innerHTML = `<option value="">Selecione Loja</option>`;
+    filtro.innerHTML = `<option value="">Todas as lojas</option>`;
 
-            select.innerHTML += `
-                <option value="${doc.id}">
-                    ${loja.codigoLoja} - ${loja.nomeLoja}
-                </option>
-            `;
-        });
+    snapshot.forEach(doc=>{
+        const loja = doc.data();
 
-    }catch(error){
-        console.error(error);
-        alert("Erro ao carregar lojas.");
-    }
+        select.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
+        filtro.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
+    });
 }
 
 async function salvarComputador(){
-    try{
-        const data = {
-            patrimonio: document.getElementById("patrimonio").value,
-            nomePC: document.getElementById("nomePC").value,
-            processador: document.getElementById("processador").value,
-            memoriaRAM: document.getElementById("memoriaRAM").value,
-            armazenamento: document.getElementById("armazenamento").value,
-            sistemaOperacional: document.getElementById("sistemaOperacional").value,
-            serialTag: document.getElementById("serialTag").value,
-            lojaId: document.getElementById("loja").value,
-            observacoes: document.getElementById("observacoes").value,
-            createdAt: new Date()
-        };
+    const data = {
+        patrimonio: patrimonio.value,
+        nomePC: nomePC.value,
+        processador: processador.value,
+        ram: ram.value,
+        armazenamento: armazenamento.value,
+        sistema: sistema.value,
+        serial: serial.value,
+        lojaId: lojaId.value,
+        observacoes: observacoes.value
+    };
 
+    if(editId){
+        await db.collection("computadores").doc(editId).update(data);
+        editId = null;
+    }else{
         await db.collection("computadores").add(data);
-
-        alert("Computador cadastrado com sucesso!");
-        location.reload();
-
-    }catch(error){
-        console.error(error);
-        alert("Erro ao cadastrar computador.");
     }
+
+    location.reload();
 }
 
 async function listarComputadores(){
-    try{
-        const snapshot = await db.collection("computadores").get();
-        const tbody = document.getElementById("listaComputadores");
-        tbody.innerHTML = "";
+    const filtro = document.getElementById("filtroLoja").value;
+    let query = db.collection("computadores");
 
-        for(const doc of snapshot.docs){
-            const pc = doc.data();
-            let lojaNome = "-";
+    if(filtro){
+        query = query.where("lojaId","==",filtro);
+    }
 
-            if(pc.lojaId){
-                const lojaDoc = await db.collection("lojas").doc(pc.lojaId).get();
+    const snapshot = await query.get();
+    const tbody = document.getElementById("listaComputadores");
+    tbody.innerHTML = "";
 
-                if(lojaDoc.exists){
-                    lojaNome = lojaDoc.data().nomeLoja;
-                }
-            }
+    for(const doc of snapshot.docs){
+        const pc = doc.data();
 
-            tbody.innerHTML += `
-                <tr>
-                    <td>${pc.patrimonio}</td>
-                    <td>${pc.nomePC}</td>
-                    <td>${pc.processador}</td>
-                    <td>${pc.memoriaRAM}</td>
-                    <td>${pc.armazenamento}</td>
-                    <td>${lojaNome}</td>
-                    <td>
-                        <button class="delete-btn" onclick="deletar('${doc.id}')">
-                            Excluir
-                        </button>
-                    </td>
-                </tr>
+        let lojaNome = "-";
+
+        if(pc.lojaId){
+            const lojaDoc = await db.collection("lojas").doc(pc.lojaId).get();
+            if(lojaDoc.exists) lojaNome = lojaDoc.data().nomeLoja;
+        }
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${pc.patrimonio}</td>
+            <td>${pc.nomePC}</td>
+            <td>${pc.processador}</td>
+            <td>${pc.ram}</td>
+            <td>${pc.armazenamento}</td>
+            <td>${lojaNome}</td>
+            <td>
+                <div class="actions">
+                    <button class="btn-view" onclick="visualizar('${doc.id}')">Visualizar</button>
+                    <button class="btn-edit" onclick="editar('${doc.id}')">Editar</button>
+                    <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
+                </div>
+            </td>
+        </tr>`;
+    }
+}
+
+async function visualizar(id){
+    const pcDoc = await db.collection("computadores").doc(id).get();
+    const pc = pcDoc.data();
+
+    const upgrades = await db.collection("upgrades")
+        .where("pcId","==",id)
+        .get();
+
+    let historico = "<h4>Histórico Upgrade</h4><br>";
+
+    if(upgrades.empty){
+        historico += "Nenhum upgrade registrado";
+    }else{
+        upgrades.forEach(doc=>{
+            const up = doc.data();
+
+            historico += `
+                <p>
+                Tipo: ${up.tipoUpgrade}<br>
+                Status: ${up.statusUpgrade}<br>
+                Atualizado por: ${up.atualizadoPor || '-'}<br>
+                Última atualização: ${up.ultimaAtualizacao || '-'}
+                </p><br>
             `;
-        }
-
-    }catch(error){
-        console.error(error);
-        alert("Erro ao carregar computadores.");
+        });
     }
+
+    document.getElementById("detalhesPC").innerHTML = `
+        <p><strong>Patrimônio:</strong> ${pc.patrimonio}</p>
+        <p><strong>Nome:</strong> ${pc.nomePC}</p>
+        <p><strong>Processador:</strong> ${pc.processador}</p>
+        <p><strong>RAM:</strong> ${pc.ram}</p>
+        <p><strong>Armazenamento:</strong> ${pc.armazenamento}</p>
+        <p><strong>Sistema:</strong> ${pc.sistema}</p>
+        <p><strong>Serial:</strong> ${pc.serial}</p>
+        <p><strong>Observações:</strong> ${pc.observacoes}</p>
+        <br>
+        ${historico}
+    `;
+
+    document.getElementById("modalVisualizar").style.display = "flex";
 }
 
-async function deletar(id){
-    if(confirm("Deseja excluir este computador?")){
-        try{
-            await db.collection("computadores").doc(id).delete();
-            location.reload();
-
-        }catch(error){
-            console.error(error);
-            alert("Erro ao excluir computador.");
-        }
-    }
+function fecharModal(){
+    document.getElementById("modalVisualizar").style.display = "none";
 }
 
-async function logout(){
-    await auth.signOut();
-    window.location.href = "index.html";
+async function editar(id){
+    const doc = await db.collection("computadores").doc(id).get();
+    const pc = doc.data();
+
+    patrimonio.value = pc.patrimonio;
+    nomePC.value = pc.nomePC;
+    processador.value = pc.processador;
+    ram.value = pc.ram;
+    armazenamento.value = pc.armazenamento;
+    sistema.value = pc.sistema;
+    serial.value = pc.serial;
+    lojaId.value = pc.lojaId;
+    observacoes.value = pc.observacoes;
+
+    editId = id;
+}
+
+async function excluir(id){
+    if(confirm("Excluir computador?")){
+        await db.collection("computadores").doc(id).delete();
+        location.reload();
+    }
 }
 </script>
-
 </body>
 </html>
