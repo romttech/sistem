@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - RomTech Controle</title>
+<title>RomTech Controle - Login</title>
 
 <style>
 *{
@@ -14,11 +14,11 @@
 }
 
 body{
-    background:linear-gradient(135deg,#1e3a8a,#2563eb);
     min-height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
+    background:linear-gradient(135deg,#1e3a8a,#2563eb);
     padding:20px;
 }
 
@@ -34,8 +34,7 @@ body{
 .logo{
     width:180px;
     display:block;
-    margin:0 auto 25px auto;
-    object-fit:contain;
+    margin:0 auto 20px auto;
 }
 
 h2{
@@ -63,7 +62,6 @@ button{
     font-size:16px;
     font-weight:bold;
     cursor:pointer;
-    transition:.3s;
 }
 
 button:hover{
@@ -72,19 +70,9 @@ button:hover{
 
 .erro{
     margin-top:15px;
-    color:#ef4444;
     text-align:center;
+    color:#ef4444;
     font-size:14px;
-}
-
-@media(max-width:480px){
-    .login-box{
-        padding:25px;
-    }
-
-    .logo{
-        width:140px;
-    }
 }
 </style>
 </head>
@@ -94,9 +82,11 @@ button:hover{
 
     <img
         src="https://raw.githubusercontent.com/romttech/sistem/refs/heads/main/logo%20rom.png"
-        alt="RomTech Logo"
         class="logo"
+        alt="RomTech"
     >
+
+    <h2>RomTech Controle</h2>
 
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="senha" placeholder="Senha">
@@ -104,7 +94,6 @@ button:hover{
     <button onclick="login()">Entrar</button>
 
     <div class="erro" id="erro"></div>
-
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -133,13 +122,17 @@ auth.onAuthStateChanged(user=>{
 });
 
 async function login(){
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value.trim();
     const erro = document.getElementById("erro");
 
     erro.innerText = "";
 
     try{
+        await auth.setPersistence(
+            firebase.auth.Auth.Persistence.LOCAL
+        );
+
         const cred = await auth.signInWithEmailAndPassword(email, senha);
 
         const snapshot = await db.collection("usuarios")
