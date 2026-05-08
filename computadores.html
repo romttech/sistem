@@ -61,8 +61,8 @@ input,select,textarea{
 }
 
 textarea{
-    height:80px;
     resize:none;
+    height:80px;
 }
 
 button{
@@ -74,10 +74,10 @@ button{
     font-weight:bold;
 }
 
-.btn-save{ background:#2563eb; }
-.btn-delete{ background:#ef4444; }
-.btn-edit{ background:#f59e0b; }
-.btn-view{ background:#10b981; }
+.btn-save{background:#2563eb;}
+.btn-delete{background:#ef4444;}
+.btn-edit{background:#f59e0b;}
+.btn-view{background:#10b981;}
 
 .table-container{
     overflow-x:auto;
@@ -161,7 +161,6 @@ th{
             <input id="armazenamento" placeholder="Armazenamento">
             <input id="sistema" placeholder="Sistema Operacional">
             <input id="serial" placeholder="Serial/Tag">
-
             <select id="lojaId"></select>
         </div>
 
@@ -194,6 +193,7 @@ th{
             <tbody id="listaComputadores"></tbody>
         </table>
     </div>
+
 </div>
 
 <div class="modal" id="modalVisualizar">
@@ -213,18 +213,28 @@ th{
 const firebaseConfig = {
   apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
   authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1"
+  projectId: "controlegeral-c90c1",
+  storageBucket: "controlegeral-c90c1.firebasestorage.app",
+  messagingSenderId: "530410393715",
+  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
 };
 
 firebase.initializeApp(firebaseConfig);
 
+const auth = firebase.auth();
 const db = firebase.firestore();
+
 let editId = null;
 
-window.onload = ()=>{
+auth.onAuthStateChanged(user=>{
+    if(!user){
+        window.location.href = "index.html";
+        return;
+    }
+
     carregarLojas();
     listarComputadores();
-};
+});
 
 async function carregarLojas(){
     const snapshot = await db.collection("lojas").get();
@@ -258,9 +268,10 @@ async function salvarComputador(){
 
     if(editId){
         await db.collection("computadores").doc(editId).update(data);
-        editId = null;
+        alert("Atualizado com sucesso");
     }else{
         await db.collection("computadores").add(data);
+        alert("Salvo com sucesso");
     }
 
     location.reload();
@@ -280,12 +291,13 @@ async function listarComputadores(){
 
     for(const doc of snapshot.docs){
         const pc = doc.data();
-
         let lojaNome = "-";
 
         if(pc.lojaId){
             const lojaDoc = await db.collection("lojas").doc(pc.lojaId).get();
-            if(lojaDoc.exists) lojaNome = lojaDoc.data().nomeLoja;
+            if(lojaDoc.exists){
+                lojaNome = lojaDoc.data().nomeLoja;
+            }
         }
 
         tbody.innerHTML += `
@@ -303,7 +315,8 @@ async function listarComputadores(){
                     <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
                 </div>
             </td>
-        </tr>`;
+        </tr>
+        `;
     }
 }
 
@@ -315,20 +328,20 @@ async function visualizar(id){
         .where("pcId","==",id)
         .get();
 
-    let historico = "<h4>Histórico Upgrade</h4><br>";
+    let historico = "<h4>Histórico de Upgrade</h4><br>";
 
     if(upgrades.empty){
-        historico += "Nenhum upgrade registrado";
+        historico += "<p>Nenhum upgrade registrado.</p>";
     }else{
         upgrades.forEach(doc=>{
             const up = doc.data();
 
             historico += `
                 <p>
-                Tipo: ${up.tipoUpgrade}<br>
-                Status: ${up.statusUpgrade}<br>
-                Atualizado por: ${up.atualizadoPor || '-'}<br>
-                Última atualização: ${up.ultimaAtualizacao || '-'}
+                    Tipo: ${up.tipoUpgrade}<br>
+                    Status: ${up.statusUpgrade}<br>
+                    Atualizado por: ${up.atualizadoPor || "-"}<br>
+                    Última atualização: ${up.ultimaAtualizacao || "-"}
                 </p><br>
             `;
         });
@@ -372,11 +385,12 @@ async function editar(id){
 }
 
 async function excluir(id){
-    if(confirm("Excluir computador?")){
+    if(confirm("Deseja excluir este computador?")){
         await db.collection("computadores").doc(id).delete();
         location.reload();
     }
 }
 </script>
+
 </body>
 </html>
