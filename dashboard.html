@@ -26,23 +26,36 @@ body{
     display:flex;
     justify-content:space-between;
     align-items:center;
+    flex-wrap:wrap;
+    gap:15px;
 }
 
-.header h1{
-    font-size:24px;
+.nav{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+.nav a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
 }
 
 .logout{
     background:#ef4444;
     border:none;
     color:white;
-    padding:10px 18px;
+    padding:10px 16px;
     border-radius:8px;
     cursor:pointer;
     font-weight:bold;
 }
 
 .container{
+    max-width:1400px;
+    margin:auto;
     padding:30px;
 }
 
@@ -61,37 +74,15 @@ body{
 }
 
 .card h3{
+    font-size:16px;
     color:#64748b;
-    font-size:15px;
     margin-bottom:10px;
 }
 
-.card p{
-    font-size:28px;
+.card span{
+    font-size:32px;
     font-weight:bold;
     color:#1e293b;
-}
-
-.menu{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:15px;
-    margin-bottom:30px;
-}
-
-.menu a{
-    text-decoration:none;
-    background:#2563eb;
-    color:white;
-    padding:18px;
-    text-align:center;
-    border-radius:12px;
-    font-weight:bold;
-    transition:.3s;
-}
-
-.menu a:hover{
-    background:#1d4ed8;
 }
 
 .chart-box{
@@ -100,48 +91,79 @@ body{
     border-radius:16px;
     box-shadow:0 5px 15px rgba(0,0,0,.08);
 }
+
+select{
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #cbd5e1;
+    margin-bottom:20px;
+    min-width:250px;
+}
+
+canvas{
+    width:100% !important;
+    max-height:420px;
+}
+
+@media(max-width:768px){
+    .container{
+        padding:15px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>RomTech Controle</h1>
-    <button class="logout" onclick="logout()">Sair</button>
+    <h2>RomTech Controle</h2>
+
+    <div class="nav">
+        <a href="lojas.html">Lojas</a>
+        <a href="computadores.html">Computadores</a>
+        <a href="upgrades.html">Upgrades</a>
+        <a href="relatorios.html">Relatórios</a>
+        <a href="admins.html">Admins</a>
+        <button class="logout" onclick="logout()">Sair</button>
+    </div>
 </div>
 
 <div class="container">
 
     <div class="cards">
         <div class="card">
-            <h3>Total de PCs</h3>
-            <p id="totalPCs">0</p>
+            <h3>Total PCs</h3>
+            <span id="totalPCs">0</span>
+        </div>
+
+        <div class="card">
+            <h3>Total Lojas</h3>
+            <span id="totalLojas">0</span>
         </div>
 
         <div class="card">
             <h3>Upgrades Pendentes</h3>
-            <p id="pendentes">0</p>
+            <span id="pendentes">0</span>
         </div>
 
         <div class="card">
             <h3>Upgrades Concluídos</h3>
-            <p id="concluidos">0</p>
+            <span id="concluidos">0</span>
         </div>
-
-        <div class="card">
-            <h3>Total de Lojas</h3>
-            <p id="totalLojas">0</p>
-        </div>
-    </div>
-
-    <div class="menu">
-        <a href="computadores.html">Computadores</a>
-        <a href="lojas.html">Lojas</a>
-        <a href="upgrades.html">Upgrades</a>
-        <a href="relatorios.html">Relatórios</a>
     </div>
 
     <div class="chart-box">
-        <canvas id="graficoStatus"></canvas>
+        <h3 style="margin-bottom:20px;">Status de Upgrades</h3>
+
+        <select id="filtroLoja" onchange="filtrarPorLoja()">
+            <option value="">Todas as lojas</option>
+        </select>
+
+        <canvas id="graficoStatus" height="100"></canvas>
     </div>
 
 </div>
@@ -161,19 +183,49 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+let chart;
+
 auth.onAuthStateChanged(user=>{
     if(!user){
-        window.location.href="index.html";
-    } else {
+        window.location.href = "index.html";
+    }else{
+        carregarLojasFiltro();
         carregarDashboard();
     }
 });
 
-async function carregarDashboard(){
-    const pcs = await db.collection("computadores").get();
+async function carregarLojasFiltro(){
+    const snapshot = await db.collection("lojas").get();
+    const select = document.getElementById("filtroLoja");
+
+    snapshot.forEach(doc=>{
+        const loja = doc.data();
+
+        select.innerHTML += `
+            <option value="${doc.id}">
+                ${loja.codigoLoja} - ${loja.nomeLoja}
+            </option>
+        `;
+    });
+}
+
+async function filtrarPorLoja(){
+    const lojaId = document.getElementById("filtroLoja").value;
+    carregarDashboard(lojaId);
+}
+
+async function carregarDashboard(lojaId=""){
+    let pcsQuery = db.collection("computadores");
+
+    if(lojaId){
+        pcsQuery = pcsQuery.where("lojaId","==",lojaId);
+    }
+
+    const pcs = await pcsQuery.get();
     document.getElementById("totalPCs").innerText = pcs.size;
 
     const lojas = await db.collection("lojas").get();
@@ -184,40 +236,76 @@ async function carregarDashboard(){
     let pendentes = 0;
     let concluidos = 0;
 
-    upgrades.forEach(doc=>{
-        const data = doc.data();
+    for(const doc of upgrades.docs){
+        const upgrade = doc.data();
 
-        if(data.statusUpgrade === "Pendente" || data.statusUpgrade === "Em análise" || data.statusUpgrade === "Em andamento"){
+        if(lojaId && upgrade.pcId){
+            const pcDoc = await db.collection("computadores")
+                .doc(upgrade.pcId)
+                .get();
+
+            if(!pcDoc.exists) continue;
+
+            if(pcDoc.data().lojaId !== lojaId){
+                continue;
+            }
+        }
+
+        if(
+            upgrade.statusUpgrade === "Pendente" ||
+            upgrade.statusUpgrade === "Em análise" ||
+            upgrade.statusUpgrade === "Em andamento" ||
+            upgrade.statusUpgrade === "Aprovado"
+        ){
             pendentes++;
         }
 
-        if(data.statusUpgrade === "Concluído"){
+        if(upgrade.statusUpgrade === "Concluído"){
             concluidos++;
         }
-    });
+    }
 
     document.getElementById("pendentes").innerText = pendentes;
     document.getElementById("concluidos").innerText = concluidos;
 
-    gerarGrafico(pendentes,concluidos);
+    gerarGrafico(pendentes, concluidos);
 }
 
-function gerarGrafico(pendentes,concluidos){
-    new Chart(document.getElementById("graficoStatus"),{
-        type:"doughnut",
+function gerarGrafico(pendentes, concluidos){
+    const ctx = document.getElementById("graficoStatus");
+
+    if(chart){
+        chart.destroy();
+    }
+
+    chart = new Chart(ctx,{
+        type:"bar",
         data:{
             labels:["Pendentes","Concluídos"],
             datasets:[{
-                data:[pendentes,concluidos],
-                backgroundColor:["#f59e0b","#22c55e"]
+                label:"Quantidade",
+                data:[pendentes, concluidos],
+                backgroundColor:["#f59e0b","#22c55e"],
+                borderRadius:8
             }]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{ display:false }
+            },
+            scales:{
+                y:{
+                    beginAtZero:true
+                }
+            }
         }
     });
 }
 
 async function logout(){
     await auth.signOut();
-    window.location.href="index.html";
+    window.location.href = "index.html";
 }
 </script>
 
