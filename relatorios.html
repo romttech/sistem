@@ -32,6 +32,7 @@ body{
     display:flex;
     gap:12px;
     align-items:center;
+    flex-wrap:wrap;
 }
 
 .header a{
@@ -148,83 +149,103 @@ async function carregarLojas(){
 }
 
 async function gerarPDF(){
-    const lojaId = document.getElementById("lojaSelect").value;
+    try{
+        const lojaId = document.getElementById("lojaSelect").value;
 
-    if(!lojaId){
-        alert("Selecione uma loja.");
-        return;
-    }
+        if(!lojaId){
+            alert("Selecione uma loja.");
+            return;
+        }
 
-    const lojaDoc = await db.collection("lojas").doc(lojaId).get();
-    const loja = lojaDoc.data();
+        const lojaDoc = await db.collection("lojas").doc(lojaId).get();
+        const loja = lojaDoc.data();
 
-    const pcsSnapshot = await db.collection("computadores")
-        .where("lojaId","==",lojaId)
-        .get();
+        const pcsSnapshot = await db.collection("computadores")
+            .where("lojaId","==",lojaId)
+            .get();
 
-    const trocasSnapshot = await db.collection("historicoTrocas").get();
+        const historicoSnapshot = await db.collection("historicoTrocas").get();
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
 
-    let y = 20;
+        let y = 20;
 
-    doc.setFontSize(18);
-    doc.text("RomTech Controle - Relatório", 20, y);
-    y += 15;
+        pdf.setFontSize(18);
+        pdf.text("RomTech Controle - Relatório", 20, y);
+        y += 15;
 
-    doc.setFontSize(12);
-    doc.text(`Loja: ${loja.nomeLoja}`, 20, y);
-    y += 8;
+        pdf.setFontSize(12);
+        pdf.text(`Loja: ${loja.nomeLoja}`, 20, y); y += 8;
+        pdf.text(`Código: ${loja.codigoLoja}`, 20, y); y += 8;
+        pdf.text(`Cidade: ${loja.cidade}`, 20, y); y += 8;
+        pdf.text(`Total Equipamentos: ${pcsSnapshot.size}`, 20, y); y += 15;
 
-    doc.text(`Código: ${loja.codigoLoja}`, 20, y);
-    y += 8;
+        pdf.setFontSize(14);
+        pdf.text("Equipamentos", 20, y);
+        y += 10;
 
-    doc.text(`Cidade: ${loja.cidade}`, 20, y);
-    y += 8;
+        pcsSnapshot.forEach(doc=>{
+            const pc = doc.data();
 
-    doc.text(`Total Equipamentos: ${pcsSnapshot.size}`, 20, y);
-    y += 15;
-
-    doc.setFontSize(14);
-    doc.text("Equipamentos", 20, y);
-    y += 10;
-
-    pcsSnapshot.forEach(pcDoc=>{
-        const pc = pcDoc.data();
-
-        doc.setFontSize(10);
-        doc.text(
-            `${pc.patrimonio} - ${pc.nomePC} - ${pc.processador}`,
-            20,
-            y
-        );
-        y += 7;
-    });
-
-    y += 10;
-    doc.setFontSize(14);
-    doc.text("Movimentações", 20, y);
-    y += 10;
-
-    trocasSnapshot.forEach(trocaDoc=>{
-        const troca = trocaDoc.data();
-
-        if(
-            troca.lojaOrigem === loja.nomeLoja ||
-            troca.lojaDestino === loja.nomeLoja
-        ){
-            doc.setFontSize(10);
-            doc.text(
-                `${troca.dataTroca} | ${troca.lojaOrigem} -> ${troca.lojaDestino}`,
+            pdf.setFontSize(10);
+            pdf.text(
+                `${pc.patrimonio} - ${pc.nomePC} - ${pc.processador}`,
                 20,
                 y
             );
             y += 7;
-        }
-    });
 
-    doc.save(`relatorio-${loja.nomeLoja}.pdf`);
+            if(y > 270){
+                pdf.addPage();
+                y = 20;
+            }
+        });
+
+        y += 10;
+
+        pdf.setFontSize(14);
+        pdf.text("Histórico / Alterações", 20, y);
+        y += 10;
+
+        for(const doc of historicoSnapshot.docs){
+            const hist = doc.data();
+
+            if(hist.pcId){
+                const pcDoc = await db.collection("computadores")
+                    .doc(hist.pcId)
+                    .get();
+
+                if(!pcDoc.exists) continue;
+
+                const pc = pcDoc.data();
+
+                if(pc.lojaId !== lojaId) continue;
+            }
+
+            pdf.setFontSize(10);
+
+            const linha = `
+${hist.dataTroca || "-"} | 
+${hist.usuario || "-"} | 
+${hist.statusNovo || hist.tipo || "Movimentação"}
+            `.replace(/\s+/g, " ").trim();
+
+            pdf.text(linha, 20, y);
+            y += 7;
+
+            if(y > 270){
+                pdf.addPage();
+                y = 20;
+            }
+        }
+
+        pdf.save(`relatorio-${loja.nomeLoja}.pdf`);
+
+    }catch(error){
+        console.error(error);
+        alert("Erro ao gerar relatório.");
+    }
 }
 
 async function logout(){
