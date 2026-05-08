@@ -3,70 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RomTech Controle - Login</title>
+<title>Login - RomTech Controle</title>
 
 <style>
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:Arial, sans-serif;
+    font-family:Arial,sans-serif;
 }
 
 body{
-    background:linear-gradient(135deg,#0f172a,#1e3a8a);
-    height:100vh;
+    background:linear-gradient(135deg,#1e3a8a,#2563eb);
+    min-height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
+    padding:20px;
 }
 
-.container{
+.login-box{
     background:white;
-    width:380px;
+    width:100%;
+    max-width:420px;
     padding:35px;
-    border-radius:18px;
-    box-shadow:0 15px 40px rgba(0,0,0,0.25);
+    border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
 
 .logo{
+    width:180px;
+    display:block;
+    margin:0 auto 25px auto;
+    object-fit:contain;
+}
+
+h2{
     text-align:center;
     margin-bottom:25px;
+    color:#1e293b;
 }
 
-.logo h1{
-    color:#1e3a8a;
-    font-size:28px;
-}
-
-.logo p{
-    color:#64748b;
-    font-size:14px;
-}
-
-.input-group{
-    margin-bottom:18px;
-}
-
-.input-group label{
-    display:block;
-    margin-bottom:6px;
-    font-size:14px;
-    color:#334155;
-    font-weight:bold;
-}
-
-.input-group input{
+input{
     width:100%;
-    padding:12px;
+    padding:14px;
+    margin-bottom:15px;
     border:1px solid #cbd5e1;
     border-radius:10px;
-    outline:none;
-    font-size:14px;
-}
-
-.input-group input:focus{
-    border-color:#2563eb;
+    font-size:15px;
 }
 
 button{
@@ -76,9 +60,9 @@ button{
     color:white;
     border:none;
     border-radius:10px;
-    cursor:pointer;
     font-size:16px;
     font-weight:bold;
+    cursor:pointer;
     transition:.3s;
 }
 
@@ -86,46 +70,43 @@ button:hover{
     background:#1d4ed8;
 }
 
-#error{
-    color:red;
-    text-align:center;
+.erro{
     margin-top:15px;
+    color:#ef4444;
+    text-align:center;
     font-size:14px;
 }
 
-.footer{
-    margin-top:20px;
-    text-align:center;
-    font-size:12px;
-    color:#64748b;
+@media(max-width:480px){
+    .login-box{
+        padding:25px;
+    }
+
+    .logo{
+        width:140px;
+    }
 }
 </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="logo">
-        <h1>RomTech Controle</h1>
-        <p>Painel Administrativo</p>
-    </div>
+<div class="login-box">
 
-    <div class="input-group">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="Digite seu email">
-    </div>
+    <img
+        src="https://raw.githubusercontent.com/romttech/sistem/refs/heads/main/logo%20rom.png"
+        alt="RomTech Logo"
+        class="logo"
+    >
 
-    <div class="input-group">
-        <label>Senha</label>
-        <input type="password" id="password" placeholder="Digite sua senha">
-    </div>
+    <h2>RomTech Controle</h2>
+
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="senha" placeholder="Senha">
 
     <button onclick="login()">Entrar</button>
 
-    <div id="error"></div>
+    <div class="erro" id="erro"></div>
 
-    <div class="footer">
-        © 2026 RomTech Controle
-    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -143,43 +124,60 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+auth.onAuthStateChanged(user=>{
+    if(user){
+        window.location.href = "dashboard.html";
+    }
+});
+
 async function login(){
     const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const error = document.getElementById("error");
+    const senha = document.getElementById("senha").value;
+    const erro = document.getElementById("erro");
 
-    error.innerText = "";
+    erro.innerText = "";
 
     try{
-        const userCredential = await auth.signInWithEmailAndPassword(email,password);
-        const user = userCredential.user;
+        const cred = await auth.signInWithEmailAndPassword(email, senha);
 
         const snapshot = await db.collection("usuarios")
-            .where("email","==",user.email)
+            .where("email","==",email)
             .get();
 
         if(snapshot.empty){
-            error.innerText = "Usuário sem permissão.";
             await auth.signOut();
+            erro.innerText = "Usuário sem permissão.";
             return;
         }
 
-        const userData = snapshot.docs[0].data();
+        let autorizado = false;
 
-        if(userData.role !== "admin"){
-            error.innerText = "Acesso negado.";
+        snapshot.forEach(doc=>{
+            const userData = doc.data();
+
+            if(
+                userData.role === "admin" &&
+                userData.ativo === true
+            ){
+                autorizado = true;
+            }
+        });
+
+        if(!autorizado){
             await auth.signOut();
+            erro.innerText = "Acesso negado.";
             return;
         }
 
         window.location.href = "dashboard.html";
 
-    }catch(err){
-        error.innerText = "Email ou senha inválidos.";
-        console.error(err);
+    }catch(error){
+        console.error(error);
+        erro.innerText = "Email ou senha inválidos.";
     }
 }
 </script>
