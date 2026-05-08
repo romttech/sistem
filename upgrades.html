@@ -24,12 +24,15 @@ body{
     display:flex;
     justify-content:space-between;
     align-items:center;
+    flex-wrap:wrap;
+    gap:15px;
 }
 
 .header-actions{
     display:flex;
     gap:15px;
     align-items:center;
+    flex-wrap:wrap;
 }
 
 .header a{
@@ -50,6 +53,8 @@ body{
 
 .container{
     padding:30px;
+    max-width:1400px;
+    margin:auto;
 }
 
 .form-box{
@@ -89,13 +94,17 @@ button{
     font-weight:bold;
 }
 
-table{
-    width:100%;
-    border-collapse:collapse;
+.table-container{
+    overflow-x:auto;
     background:white;
     border-radius:16px;
-    overflow:hidden;
     box-shadow:0 5px 15px rgba(0,0,0,.08);
+}
+
+table{
+    width:100%;
+    min-width:900px;
+    border-collapse:collapse;
 }
 
 th, td{
@@ -103,6 +112,7 @@ th, td{
     text-align:left;
     border-bottom:1px solid #e2e8f0;
     font-size:14px;
+    white-space:nowrap;
 }
 
 th{
@@ -110,13 +120,19 @@ th{
     color:white;
 }
 
-.update-btn{
-    background:#16a34a;
-    color:white;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
+@media(max-width:768px){
+    .container{
+        padding:15px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
 }
 </style>
 </head>
@@ -166,19 +182,22 @@ th{
         <button onclick="salvarUpgrade()">Registrar Upgrade</button>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Computador</th>
-                <th>Tipo</th>
-                <th>Status</th>
-                <th>Responsável</th>
-                <th>Data</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody id="listaUpgrades"></tbody>
-    </table>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Computador</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Responsável</th>
+                    <th>Criado em</th>
+                    <th>Atualizado por</th>
+                    <th>Última atualização</th>
+                </tr>
+            </thead>
+            <tbody id="listaUpgrades"></tbody>
+        </table>
+    </div>
 
 </div>
 
@@ -211,40 +230,36 @@ auth.onAuthStateChanged(user=>{
 });
 
 async function carregarComputadores(){
-    try{
-        const snapshot = await db.collection("computadores").get();
-        const select = document.getElementById("pcSelect");
+    const snapshot = await db.collection("computadores").get();
+    const select = document.getElementById("pcSelect");
 
-        select.innerHTML = '<option value="">Selecione o Computador</option>';
+    select.innerHTML = '<option value="">Selecione o Computador</option>';
 
-        snapshot.forEach(doc=>{
-            const pc = doc.data();
+    snapshot.forEach(doc=>{
+        const pc = doc.data();
 
-            select.innerHTML += `
-                <option value="${doc.id}">
-                    ${pc.patrimonio} - ${pc.nomePC}
-                </option>
-            `;
-        });
-
-    }catch(error){
-        console.error(error);
-        alert("Erro ao carregar computadores.");
-    }
+        select.innerHTML += `
+            <option value="${doc.id}">
+                ${pc.patrimonio} - ${pc.nomePC}
+            </option>
+        `;
+    });
 }
 
 async function salvarUpgrade(){
     try{
-        const data = {
+        const user = auth.currentUser;
+
+        await db.collection("upgrades").add({
             pcId: document.getElementById("pcSelect").value,
             tipoUpgrade: document.getElementById("tipoUpgrade").value,
             statusUpgrade: document.getElementById("statusUpgrade").value,
             responsavel: document.getElementById("responsavel").value,
             observacao: document.getElementById("observacaoUpgrade").value,
-            dataSolicitacao: new Date().toLocaleString()
-        };
-
-        await db.collection("upgrades").add(data);
+            dataSolicitacao: new Date().toLocaleString(),
+            atualizadoPor: user.email,
+            ultimaAtualizacao: new Date().toLocaleString()
+        });
 
         alert("Upgrade registrado com sucesso!");
         location.reload();
@@ -256,73 +271,77 @@ async function salvarUpgrade(){
 }
 
 async function listarUpgrades(){
-    try{
-        const snapshot = await db.collection("upgrades").get();
-        const tbody = document.getElementById("listaUpgrades");
-        tbody.innerHTML = "";
+    const snapshot = await db.collection("upgrades").get();
+    const tbody = document.getElementById("listaUpgrades");
+    tbody.innerHTML = "";
 
-        for(const doc of snapshot.docs){
-            const upgrade = doc.data();
-            let nomePC = "-";
+    for(const doc of snapshot.docs){
+        const upgrade = doc.data();
+        let nomePC = "-";
 
-            if(upgrade.pcId){
-                const pcDoc = await db.collection("computadores").doc(upgrade.pcId).get();
+        if(upgrade.pcId){
+            const pcDoc = await db.collection("computadores")
+                .doc(upgrade.pcId)
+                .get();
 
-                if(pcDoc.exists){
-                    const pc = pcDoc.data();
-                    nomePC = pc.patrimonio + " - " + pc.nomePC;
-                }
+            if(pcDoc.exists){
+                const pc = pcDoc.data();
+                nomePC = pc.patrimonio + " - " + pc.nomePC;
             }
-
-            tbody.innerHTML += `
-                <tr>
-                    <td>${nomePC}</td>
-                    <td>${upgrade.tipoUpgrade}</td>
-                    <td>${upgrade.statusUpgrade}</td>
-                    <td>${upgrade.responsavel}</td>
-                    <td>${upgrade.dataSolicitacao}</td>
-                    <td>
-                        <button class="update-btn" onclick="alterarStatus('${doc.id}')">
-                            Próximo Status
-                        </button>
-                    </td>
-                </tr>
-            `;
         }
 
-    }catch(error){
-        console.error(error);
-        alert("Erro ao carregar upgrades.");
+        tbody.innerHTML += `
+            <tr>
+                <td>${nomePC}</td>
+                <td>${upgrade.tipoUpgrade}</td>
+                <td>
+                    <select onchange="alterarStatus('${doc.id}', this.value)">
+                        <option ${upgrade.statusUpgrade === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                        <option ${upgrade.statusUpgrade === 'Em análise' ? 'selected' : ''}>Em análise</option>
+                        <option ${upgrade.statusUpgrade === 'Aprovado' ? 'selected' : ''}>Aprovado</option>
+                        <option ${upgrade.statusUpgrade === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+                        <option ${upgrade.statusUpgrade === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                        <option ${upgrade.statusUpgrade === 'Não necessário' ? 'selected' : ''}>Não necessário</option>
+                    </select>
+                </td>
+                <td>${upgrade.responsavel}</td>
+                <td>${upgrade.dataSolicitacao}</td>
+                <td>${upgrade.atualizadoPor || "-"}</td>
+                <td>${upgrade.ultimaAtualizacao || "-"}</td>
+            </tr>
+        `;
     }
 }
 
-async function alterarStatus(id){
+async function alterarStatus(id, novoStatus){
     try{
-        const fluxo = [
-            "Pendente",
-            "Em análise",
-            "Aprovado",
-            "Em andamento",
-            "Concluído"
-        ];
+        const user = auth.currentUser;
+        if(!user) return;
 
         const ref = db.collection("upgrades").doc(id);
-        const docSnap = await ref.get();
+        const upgradeDoc = await ref.get();
 
-        if(!docSnap.exists) return;
+        if(!upgradeDoc.exists) return;
 
-        const atual = docSnap.data().statusUpgrade;
-        const index = fluxo.indexOf(atual);
+        const upgrade = upgradeDoc.data();
 
-        if(index < fluxo.length - 1){
-            await ref.update({
-                statusUpgrade: fluxo[index + 1]
-            });
+        await ref.update({
+            statusUpgrade: novoStatus,
+            atualizadoPor: user.email,
+            ultimaAtualizacao: new Date().toLocaleString()
+        });
 
-            location.reload();
-        } else {
-            alert("Upgrade já concluído.");
-        }
+        await db.collection("historicoTrocas").add({
+            tipo: "Alteração Upgrade",
+            upgradeId: id,
+            pcId: upgrade.pcId || "",
+            statusNovo: novoStatus,
+            usuario: user.email,
+            dataTroca: new Date().toLocaleString()
+        });
+
+        alert("Status atualizado com sucesso!");
+        location.reload();
 
     }catch(error){
         console.error(error);
