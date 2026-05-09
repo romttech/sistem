@@ -189,14 +189,55 @@ const db = firebase.firestore();
 
 let chart;
 
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
     if(!user){
         window.location.href = "index.html";
-    }else{
-        carregarLojasFiltro();
-        carregarDashboard();
+        return;
     }
+
+    await carregarPermissoes();
+    carregarLojasFiltro();
+    carregarDashboard();
 });
+
+async function carregarPermissoes(){
+    const user = auth.currentUser;
+
+    const snapshot = await db.collection("usuarios")
+        .where("email","==",user.email)
+        .get();
+
+    if(snapshot.empty){
+        alert("Usuário sem cadastro");
+        window.location.href = "index.html";
+        return;
+    }
+
+    let permissoes = {};
+
+    snapshot.forEach(doc=>{
+        permissoes = doc.data().permissoes || {};
+    });
+
+    aplicarPermissoes(permissoes);
+}
+
+function aplicarPermissoes(permissoes){
+    const links = {
+        lojas:'a[href="lojas.html"]',
+        computadores:'a[href="computadores.html"]',
+        upgrades:'a[href="upgrades.html"]',
+        relatorios:'a[href="relatorios.html"]',
+        admins:'a[href="admins.html"]'
+    };
+
+    Object.keys(links).forEach(modulo=>{
+        if(!permissoes[modulo]){
+            const el = document.querySelector(links[modulo]);
+            if(el) el.style.display = "none";
+        }
+    });
+}
 
 async function carregarLojasFiltro(){
     const snapshot = await db.collection("lojas").get();
@@ -214,8 +255,7 @@ async function carregarLojasFiltro(){
 }
 
 async function filtrarPorLoja(){
-    const lojaId = document.getElementById("filtroLoja").value;
-    carregarDashboard(lojaId);
+    carregarDashboard(document.getElementById("filtroLoja").value);
 }
 
 async function carregarDashboard(lojaId=""){
@@ -226,10 +266,10 @@ async function carregarDashboard(lojaId=""){
     }
 
     const pcs = await pcsQuery.get();
-    document.getElementById("totalPCs").innerText = pcs.size;
+    totalPCs.innerText = pcs.size;
 
     const lojas = await db.collection("lojas").get();
-    document.getElementById("totalLojas").innerText = lojas.size;
+    totalLojas.innerText = lojas.size;
 
     const upgrades = await db.collection("upgrades").get();
 
@@ -245,10 +285,7 @@ async function carregarDashboard(lojaId=""){
                 .get();
 
             if(!pcDoc.exists) continue;
-
-            if(pcDoc.data().lojaId !== lojaId){
-                continue;
-            }
+            if(pcDoc.data().lojaId !== lojaId) continue;
         }
 
         if(
@@ -265,8 +302,11 @@ async function carregarDashboard(lojaId=""){
         }
     }
 
-    document.getElementById("pendentes").innerText = pendentes;
-    document.getElementById("concluidos").innerText = concluidos;
+    pendentesEl = document.getElementById("pendentes");
+    concluidosEl = document.getElementById("concluidos");
+
+    pendentesEl.innerText = pendentes;
+    concluidosEl.innerText = concluidos;
 
     gerarGrafico(pendentes, concluidos);
 }
@@ -274,16 +314,13 @@ async function carregarDashboard(lojaId=""){
 function gerarGrafico(pendentes, concluidos){
     const ctx = document.getElementById("graficoStatus");
 
-    if(chart){
-        chart.destroy();
-    }
+    if(chart) chart.destroy();
 
     chart = new Chart(ctx,{
         type:"bar",
         data:{
             labels:["Pendentes","Concluídos"],
             datasets:[{
-                label:"Quantidade",
                 data:[pendentes, concluidos],
                 backgroundColor:["#f59e0b","#22c55e"],
                 borderRadius:8
@@ -292,12 +329,10 @@ function gerarGrafico(pendentes, concluidos){
         options:{
             responsive:true,
             plugins:{
-                legend:{ display:false }
+                legend:{display:false}
             },
             scales:{
-                y:{
-                    beginAtZero:true
-                }
+                y:{beginAtZero:true}
             }
         }
     });
