@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Relatórios - RomTech Controle</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
 *{
     margin:0;
@@ -20,19 +22,12 @@ body{
 .header{
     background:#1e3a8a;
     color:white;
-    padding:20px 30px;
+    padding:18px 20px;
     display:flex;
     justify-content:space-between;
     align-items:center;
     flex-wrap:wrap;
-    gap:15px;
-}
-
-.header-actions{
-    display:flex;
-    gap:12px;
-    align-items:center;
-    flex-wrap:wrap;
+    gap:10px;
 }
 
 .header a{
@@ -41,34 +36,25 @@ body{
     font-weight:bold;
 }
 
-.logout{
-    background:#ef4444;
-    border:none;
-    color:white;
-    padding:10px 16px;
-    border-radius:8px;
-    cursor:pointer;
-}
-
 .container{
     max-width:1200px;
     margin:auto;
-    padding:30px;
+    padding:20px;
 }
 
 .box{
     background:white;
-    padding:25px;
+    padding:20px;
     border-radius:16px;
     box-shadow:0 5px 15px rgba(0,0,0,.08);
+    margin-bottom:20px;
 }
 
 select,button{
-    width:100%;
-    padding:14px;
+    padding:12px;
     border-radius:8px;
     border:1px solid #cbd5e1;
-    margin-bottom:15px;
+    font-size:14px;
 }
 
 button{
@@ -78,33 +64,79 @@ button{
     cursor:pointer;
     font-weight:bold;
 }
+
+.table-container{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    min-width:900px;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid #e2e8f0;
+    text-align:left;
+    white-space:nowrap;
+}
+
+th{
+    background:#1e293b;
+    color:white;
+}
+
+@media(max-width:768px){
+    .container{
+        padding:12px;
+    }
+
+    .box{
+        padding:15px;
+    }
+
+    button{
+        width:100%;
+        margin-top:10px;
+    }
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>Relatórios PDF</h2>
-
-    <div class="header-actions">
-        <a href="dashboard.html">← Dashboard</a>
-        <button class="logout" onclick="logout()">Sair</button>
-    </div>
+    <h2>Relatórios</h2>
+    <a href="dashboard.html">← Dashboard</a>
 </div>
 
 <div class="container">
-    <div class="box">
-        <h3>Gerar relatório por loja</h3>
-        <br>
 
-        <select id="lojaSelect">
-            <option value="">Selecione uma loja</option>
+    <div class="box">
+        <select id="filtroLoja" onchange="gerarRelatorioTela()">
+            <option value="">Selecione Loja</option>
         </select>
 
-        <button onclick="gerarPDF()">Gerar PDF</button>
+        <button onclick="exportarPDF()">Exportar PDF</button>
     </div>
-</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <div class="box table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Patrimônio</th>
+                    <th>Computador</th>
+                    <th>Upgrade</th>
+                    <th>Status</th>
+                    <th>Última alteração</th>
+                    <th>Usuário</th>
+                </tr>
+            </thead>
+            <tbody id="relatorioBody"></tbody>
+        </table>
+    </div>
+
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -114,10 +146,7 @@ button{
 const firebaseConfig = {
   apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
   authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1",
-  storageBucket: "controlegeral-c90c1.firebasestorage.app",
-  messagingSenderId: "530410393715",
-  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
+  projectId: "controlegeral-c90c1"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -125,22 +154,44 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-auth.onAuthStateChanged(user=>{
+let dadosRelatorio = [];
+
+auth.onAuthStateChanged(async user=>{
     if(!user){
-        window.location.href = "index.html";
-    }else{
-        carregarLojas();
+        location.href = "index.html";
+        return;
     }
+
+    await validarPermissao("relatorios");
+    carregarLojas();
 });
+
+async function validarPermissao(modulo){
+    const user = auth.currentUser;
+
+    const snapshot = await db.collection("usuarios")
+        .where("email","==",user.email)
+        .get();
+
+    snapshot.forEach(doc=>{
+        const dados = doc.data();
+
+        if(!dados.permissoes?.[modulo]){
+            alert("Sem permissão");
+            location.href = "dashboard.html";
+        }
+    });
+}
 
 async function carregarLojas(){
     const snapshot = await db.collection("lojas").get();
-    const select = document.getElementById("lojaSelect");
+
+    filtroLoja.innerHTML = `<option value="">Selecione Loja</option>`;
 
     snapshot.forEach(doc=>{
         const loja = doc.data();
 
-        select.innerHTML += `
+        filtroLoja.innerHTML += `
             <option value="${doc.id}">
                 ${loja.codigoLoja} - ${loja.nomeLoja}
             </option>
@@ -148,109 +199,101 @@ async function carregarLojas(){
     });
 }
 
-async function gerarPDF(){
-    try{
-        const lojaId = document.getElementById("lojaSelect").value;
+async function gerarRelatorioTela(){
+    const lojaId = filtroLoja.value;
 
-        if(!lojaId){
-            alert("Selecione uma loja.");
-            return;
-        }
+    if(!lojaId) return;
 
-        const lojaDoc = await db.collection("lojas").doc(lojaId).get();
-        const loja = lojaDoc.data();
+    relatorioBody.innerHTML = "";
+    dadosRelatorio = [];
 
-        const pcsSnapshot = await db.collection("computadores")
-            .where("lojaId","==",lojaId)
+    const pcs = await db.collection("computadores")
+        .where("lojaId","==",lojaId)
+        .get();
+
+    for(const pcDoc of pcs.docs){
+        const pc = pcDoc.data();
+
+        const upgrades = await db.collection("upgrades")
+            .where("pcId","==",pcDoc.id)
             .get();
 
-        const historicoSnapshot = await db.collection("historicoTrocas").get();
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF();
-
-        let y = 20;
-
-        pdf.setFontSize(18);
-        pdf.text("RomTech Controle - Relatório", 20, y);
-        y += 15;
-
-        pdf.setFontSize(12);
-        pdf.text(`Loja: ${loja.nomeLoja}`, 20, y); y += 8;
-        pdf.text(`Código: ${loja.codigoLoja}`, 20, y); y += 8;
-        pdf.text(`Cidade: ${loja.cidade}`, 20, y); y += 8;
-        pdf.text(`Total Equipamentos: ${pcsSnapshot.size}`, 20, y); y += 15;
-
-        pdf.setFontSize(14);
-        pdf.text("Equipamentos", 20, y);
-        y += 10;
-
-        pcsSnapshot.forEach(doc=>{
-            const pc = doc.data();
-
-            pdf.setFontSize(10);
-            pdf.text(
-                `${pc.patrimonio} - ${pc.nomePC} - ${pc.processador}`,
-                20,
-                y
-            );
-            y += 7;
-
-            if(y > 270){
-                pdf.addPage();
-                y = 20;
-            }
-        });
-
-        y += 10;
-
-        pdf.setFontSize(14);
-        pdf.text("Histórico / Alterações", 20, y);
-        y += 10;
-
-        for(const doc of historicoSnapshot.docs){
-            const hist = doc.data();
-
-            if(hist.pcId){
-                const pcDoc = await db.collection("computadores")
-                    .doc(hist.pcId)
-                    .get();
-
-                if(!pcDoc.exists) continue;
-
-                const pc = pcDoc.data();
-
-                if(pc.lojaId !== lojaId) continue;
-            }
-
-            pdf.setFontSize(10);
-
-            const linha = `
-${hist.dataTroca || "-"} | 
-${hist.usuario || "-"} | 
-${hist.statusNovo || hist.tipo || "Movimentação"}
-            `.replace(/\s+/g, " ").trim();
-
-            pdf.text(linha, 20, y);
-            y += 7;
-
-            if(y > 270){
-                pdf.addPage();
-                y = 20;
-            }
+        if(upgrades.empty){
+            adicionarLinha({
+                patrimonio: pc.patrimonio,
+                nomePC: pc.nomePC,
+                upgrade: "-",
+                status: "-",
+                data: "-",
+                usuario: "-"
+            });
         }
 
-        pdf.save(`relatorio-${loja.nomeLoja}.pdf`);
+        upgrades.forEach(upDoc=>{
+            const up = upDoc.data();
 
-    }catch(error){
-        console.error(error);
-        alert("Erro ao gerar relatório.");
+            adicionarLinha({
+                patrimonio: pc.patrimonio,
+                nomePC: pc.nomePC,
+                upgrade: up.tipoUpgrade,
+                status: up.statusUpgrade,
+                data: up.ultimaAtualizacao || "-",
+                usuario: up.atualizadoPor || "-"
+            });
+        });
     }
 }
 
-async function logout(){
-    await auth.signOut();
-    window.location.href = "index.html";
+function adicionarLinha(item){
+    dadosRelatorio.push(item);
+
+    relatorioBody.innerHTML += `
+        <tr>
+            <td>${item.patrimonio}</td>
+            <td>${item.nomePC}</td>
+            <td>${item.upgrade}</td>
+            <td>${item.status}</td>
+            <td>${item.data}</td>
+            <td>${item.usuario}</td>
+        </tr>
+    `;
+}
+
+function exportarPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Relatório RomTech Controle", 20, 20);
+
+    let y = 35;
+
+    dadosRelatorio.forEach(item=>{
+        doc.setFontSize(10);
+
+        doc.text(
+            `${item.patrimonio} | ${item.nomePC} | ${item.upgrade} | ${item.status}`,
+            10,
+            y
+        );
+
+        y += 8;
+
+        doc.text(
+            `Atualização: ${item.data} | Usuário: ${item.usuario}`,
+            10,
+            y
+        );
+
+        y += 12;
+
+        if(y > 270){
+            doc.addPage();
+            y = 20;
+        }
+    });
+
+    doc.save("relatorio-romtech.pdf");
 }
 </script>
 
