@@ -20,11 +20,12 @@ body{
 .header{
     background:#1e3a8a;
     color:white;
-    padding:20px 30px;
+    padding:18px 20px;
     display:flex;
     justify-content:space-between;
     align-items:center;
     flex-wrap:wrap;
+    gap:10px;
 }
 
 .header a{
@@ -36,21 +37,21 @@ body{
 .container{
     max-width:1400px;
     margin:auto;
-    padding:30px;
+    padding:20px;
 }
 
 .box{
     background:white;
-    padding:25px;
+    padding:20px;
     border-radius:16px;
     box-shadow:0 5px 15px rgba(0,0,0,.08);
-    margin-bottom:25px;
+    margin-bottom:20px;
 }
 
 .form-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:15px;
+    gap:12px;
 }
 
 input,select,textarea{
@@ -58,42 +59,42 @@ input,select,textarea{
     padding:12px;
     border:1px solid #cbd5e1;
     border-radius:8px;
+    font-size:14px;
 }
 
 textarea{
+    height:90px;
     resize:none;
-    height:80px;
 }
 
 button{
-    padding:12px 18px;
+    padding:12px 16px;
     border:none;
     border-radius:8px;
     cursor:pointer;
     color:white;
     font-weight:bold;
+    font-size:14px;
 }
 
 .btn-save{background:#2563eb;}
-.btn-delete{background:#ef4444;}
-.btn-edit{background:#f59e0b;}
 .btn-view{background:#10b981;}
+.btn-edit{background:#f59e0b;}
+.btn-delete{background:#ef4444;}
 
 .table-container{
     overflow-x:auto;
-    background:white;
-    border-radius:16px;
-    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    width:100%;
 }
 
 table{
     width:100%;
-    min-width:1200px;
+    min-width:1100px;
     border-collapse:collapse;
 }
 
 th,td{
-    padding:14px;
+    padding:12px;
     border-bottom:1px solid #e2e8f0;
     text-align:left;
     white-space:nowrap;
@@ -106,25 +107,27 @@ th{
 
 .actions{
     display:flex;
-    gap:8px;
+    gap:6px;
+    flex-wrap:wrap;
 }
 
 .modal{
     display:none;
     position:fixed;
     inset:0;
-    background:rgba(0,0,0,.5);
+    background:rgba(0,0,0,.6);
     justify-content:center;
     align-items:center;
+    padding:15px;
     z-index:999;
 }
 
 .modal-content{
     background:white;
-    width:90%;
+    width:100%;
     max-width:700px;
-    padding:25px;
     border-radius:16px;
+    padding:25px;
     max-height:85vh;
     overflow:auto;
 }
@@ -132,13 +135,32 @@ th{
 .close{
     float:right;
     cursor:pointer;
-    font-size:22px;
+    font-size:24px;
     font-weight:bold;
 }
 
 @media(max-width:768px){
+
     .container{
+        padding:12px;
+    }
+
+    .box{
         padding:15px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    button{
+        width:100%;
+    }
+
+    .actions button{
+        width:auto;
+        flex:1;
     }
 }
 </style>
@@ -157,7 +179,7 @@ th{
             <input id="patrimonio" placeholder="Patrimônio">
             <input id="nomePC" placeholder="Nome do PC">
             <input id="processador" placeholder="Processador">
-            <input id="ram" placeholder="RAM">
+            <input id="ram" placeholder="Memória RAM">
             <input id="armazenamento" placeholder="Armazenamento">
             <input id="sistema" placeholder="Sistema Operacional">
             <input id="serial" placeholder="Serial/Tag">
@@ -166,8 +188,8 @@ th{
 
         <br>
         <textarea id="observacoes" placeholder="Observações"></textarea>
-        <br><br>
 
+        <br><br>
         <button class="btn-save" onclick="salvarComputador()">Salvar</button>
     </div>
 
@@ -177,7 +199,7 @@ th{
         </select>
     </div>
 
-    <div class="table-container">
+    <div class="box table-container">
         <table>
             <thead>
                 <tr>
@@ -193,7 +215,6 @@ th{
             <tbody id="listaComputadores"></tbody>
         </table>
     </div>
-
 </div>
 
 <div class="modal" id="modalVisualizar">
@@ -213,10 +234,7 @@ th{
 const firebaseConfig = {
   apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
   authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1",
-  storageBucket: "controlegeral-c90c1.firebasestorage.app",
-  messagingSenderId: "530410393715",
-  appId: "1:530410393715:web:c0c53cb80dc6d20fdeda06"
+  projectId: "controlegeral-c90c1"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -226,30 +244,46 @@ const db = firebase.firestore();
 
 let editId = null;
 
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
     if(!user){
-        window.location.href = "index.html";
+        location.href = "index.html";
         return;
     }
+
+    await validarPermissao("computadores");
 
     carregarLojas();
     listarComputadores();
 });
 
+async function validarPermissao(modulo){
+    const user = auth.currentUser;
+
+    const snapshot = await db.collection("usuarios")
+        .where("email","==",user.email)
+        .get();
+
+    snapshot.forEach(doc=>{
+        const dados = doc.data();
+
+        if(!dados.permissoes?.[modulo]){
+            alert("Sem permissão para acessar esta área");
+            location.href = "dashboard.html";
+        }
+    });
+}
+
 async function carregarLojas(){
     const snapshot = await db.collection("lojas").get();
 
-    const select = document.getElementById("lojaId");
-    const filtro = document.getElementById("filtroLoja");
-
-    select.innerHTML = `<option value="">Selecione Loja</option>`;
-    filtro.innerHTML = `<option value="">Todas as lojas</option>`;
+    lojaId.innerHTML = `<option value="">Selecione Loja</option>`;
+    filtroLoja.innerHTML = `<option value="">Todas as lojas</option>`;
 
     snapshot.forEach(doc=>{
         const loja = doc.data();
 
-        select.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
-        filtro.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
+        lojaId.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
+        filtroLoja.innerHTML += `<option value="${doc.id}">${loja.nomeLoja}</option>`;
     });
 }
 
@@ -268,39 +302,34 @@ async function salvarComputador(){
 
     if(editId){
         await db.collection("computadores").doc(editId).update(data);
-        alert("Atualizado com sucesso");
-    }else{
+    } else {
         await db.collection("computadores").add(data);
-        alert("Salvo com sucesso");
     }
 
     location.reload();
 }
 
 async function listarComputadores(){
-    const filtro = document.getElementById("filtroLoja").value;
     let query = db.collection("computadores");
+    const filtro = filtroLoja.value;
 
     if(filtro){
         query = query.where("lojaId","==",filtro);
     }
 
     const snapshot = await query.get();
-    const tbody = document.getElementById("listaComputadores");
-    tbody.innerHTML = "";
+    listaComputadores.innerHTML = "";
 
     for(const doc of snapshot.docs){
         const pc = doc.data();
         let lojaNome = "-";
 
         if(pc.lojaId){
-            const lojaDoc = await db.collection("lojas").doc(pc.lojaId).get();
-            if(lojaDoc.exists){
-                lojaNome = lojaDoc.data().nomeLoja;
-            }
+            const loja = await db.collection("lojas").doc(pc.lojaId).get();
+            if(loja.exists) lojaNome = loja.data().nomeLoja;
         }
 
-        tbody.innerHTML += `
+        listaComputadores.innerHTML += `
         <tr>
             <td>${pc.patrimonio}</td>
             <td>${pc.nomePC}</td>
@@ -310,44 +339,20 @@ async function listarComputadores(){
             <td>${lojaNome}</td>
             <td>
                 <div class="actions">
-                    <button class="btn-view" onclick="visualizar('${doc.id}')">Visualizar</button>
+                    <button class="btn-view" onclick="visualizar('${doc.id}')">Ver</button>
                     <button class="btn-edit" onclick="editar('${doc.id}')">Editar</button>
                     <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
                 </div>
             </td>
-        </tr>
-        `;
+        </tr>`;
     }
 }
 
 async function visualizar(id){
-    const pcDoc = await db.collection("computadores").doc(id).get();
-    const pc = pcDoc.data();
+    const doc = await db.collection("computadores").doc(id).get();
+    const pc = doc.data();
 
-    const upgrades = await db.collection("upgrades")
-        .where("pcId","==",id)
-        .get();
-
-    let historico = "<h4>Histórico de Upgrade</h4><br>";
-
-    if(upgrades.empty){
-        historico += "<p>Nenhum upgrade registrado.</p>";
-    }else{
-        upgrades.forEach(doc=>{
-            const up = doc.data();
-
-            historico += `
-                <p>
-                    Tipo: ${up.tipoUpgrade}<br>
-                    Status: ${up.statusUpgrade}<br>
-                    Atualizado por: ${up.atualizadoPor || "-"}<br>
-                    Última atualização: ${up.ultimaAtualizacao || "-"}
-                </p><br>
-            `;
-        });
-    }
-
-    document.getElementById("detalhesPC").innerHTML = `
+    detalhesPC.innerHTML = `
         <p><strong>Patrimônio:</strong> ${pc.patrimonio}</p>
         <p><strong>Nome:</strong> ${pc.nomePC}</p>
         <p><strong>Processador:</strong> ${pc.processador}</p>
@@ -356,15 +361,13 @@ async function visualizar(id){
         <p><strong>Sistema:</strong> ${pc.sistema}</p>
         <p><strong>Serial:</strong> ${pc.serial}</p>
         <p><strong>Observações:</strong> ${pc.observacoes}</p>
-        <br>
-        ${historico}
     `;
 
-    document.getElementById("modalVisualizar").style.display = "flex";
+    modalVisualizar.style.display = "flex";
 }
 
 function fecharModal(){
-    document.getElementById("modalVisualizar").style.display = "none";
+    modalVisualizar.style.display = "none";
 }
 
 async function editar(id){
@@ -385,12 +388,11 @@ async function editar(id){
 }
 
 async function excluir(id){
-    if(confirm("Deseja excluir este computador?")){
+    if(confirm("Excluir computador?")){
         await db.collection("computadores").doc(id).delete();
         location.reload();
     }
 }
 </script>
-
 </body>
 </html>
