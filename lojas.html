@@ -107,7 +107,6 @@ th{
 }
 
 @media(max-width:768px){
-
     .container{
         padding:12px;
     }
@@ -147,7 +146,7 @@ th{
             <input id="codigoLoja" placeholder="Código Loja">
             <input id="cidade" placeholder="Cidade">
 
-            <select id="status">
+            <select id="statusLoja">
                 <option value="ativo">Ativo</option>
                 <option value="inativo">Inativo</option>
             </select>
@@ -180,9 +179,9 @@ th{
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
-  authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1"
+    apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+    authDomain: "controlegeral-c90c1.firebaseapp.com",
+    projectId: "controlegeral-c90c1"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -221,15 +220,20 @@ async function validarPermissao(modulo){
 
 async function salvarLoja(){
     const data = {
-        nomeLoja: nomeLoja.value,
-        codigoLoja: codigoLoja.value,
-        cidade: cidade.value,
-        status: status.value
+        nomeLoja: document.getElementById("nomeLoja").value.trim(),
+        codigoLoja: document.getElementById("codigoLoja").value.trim(),
+        cidade: document.getElementById("cidade").value.trim(),
+        status: document.getElementById("statusLoja").value
     };
+
+    if(!data.nomeLoja || !data.codigoLoja || !data.cidade){
+        alert("Preencha todos os campos");
+        return;
+    }
 
     if(editId){
         await db.collection("lojas").doc(editId).update(data);
-    } else {
+    }else{
         await db.collection("lojas").add(data);
     }
 
@@ -238,7 +242,6 @@ async function salvarLoja(){
 
 async function listarLojas(){
     const snapshot = await db.collection("lojas").get();
-
     listaLojas.innerHTML = "";
 
     snapshot.forEach(doc=>{
@@ -246,16 +249,19 @@ async function listarLojas(){
 
         listaLojas.innerHTML += `
         <tr>
-            <td>${loja.nomeLoja}</td>
-            <td>${loja.codigoLoja}</td>
-            <td>${loja.cidade}</td>
-            <td>${loja.status}</td>
+            <td>${loja.nomeLoja || "-"}</td>
+            <td>${loja.codigoLoja || "-"}</td>
+            <td>${loja.cidade || "-"}</td>
+            <td>${loja.status || "-"}</td>
             <td>
                 <div class="actions">
                     <button class="btn-edit" onclick="editar('${doc.id}')">Editar</button>
-                    <button class="btn-status" onclick="alterarStatus('${doc.id}','${loja.status}')">
+
+                    <button class="btn-status"
+                        onclick="alterarStatus('${doc.id}','${loja.status}')">
                         ${loja.status === 'ativo' ? 'Inativar' : 'Ativar'}
                     </button>
+
                     <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
                 </div>
             </td>
@@ -264,22 +270,22 @@ async function listarLojas(){
 }
 
 async function editar(id){
-    const doc = await db.collection("lojas").doc(id).get();
-    const loja = doc.data();
+    const docRef = await db.collection("lojas").doc(id).get();
+    const loja = docRef.data();
 
-    nomeLoja.value = loja.nomeLoja;
-    codigoLoja.value = loja.codigoLoja;
-    cidade.value = loja.cidade;
-    status.value = loja.status;
+    document.getElementById("nomeLoja").value = loja.nomeLoja || "";
+    document.getElementById("codigoLoja").value = loja.codigoLoja || "";
+    document.getElementById("cidade").value = loja.cidade || "";
+    document.getElementById("statusLoja").value = loja.status || "ativo";
 
     editId = id;
 }
 
 async function alterarStatus(id,statusAtual){
-    const novo = statusAtual === "ativo" ? "inativo" : "ativo";
+    const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
 
     await db.collection("lojas").doc(id).update({
-        status: novo
+        status: novoStatus
     });
 
     location.reload();
