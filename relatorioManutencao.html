@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Manutenção - RomTech Controle</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f1f5f9;
+}
+
+.header{
+    background:#1e3a8a;
+    color:white;
+    padding:18px 20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.header a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+    padding:20px;
+}
+
+.box{
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+}
+
+h2{
+    margin-bottom:20px;
+    color:#1e293b;
+}
+
+select,button{
+    width:100%;
+    padding:14px;
+    border-radius:8px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+    margin-bottom:15px;
+}
+
+button{
+    background:#2563eb;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.info{
+    margin-top:10px;
+    color:#64748b;
+    font-size:14px;
+}
+
+@media(max-width:768px){
+    .container{
+        padding:12px;
+    }
+
+    .box{
+        padding:18px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Relatório Manutenção</h2>
+    <a href="dashboard.html">← Dashboard</a>
+</div>
+
+<div class="container">
+    <div class="box">
+        <h2>Gerar Relatório PDF</h2>
+
+        <select id="filtroLoja">
+            <option value="">GERAL - Todas as lojas</option>
+        </select>
+
+        <button onclick="gerarPDF()">Gerar PDF</button>
+
+        <div class="info">
+            O relatório será gerado com histórico completo por alteração de status.
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+    authDomain: "controlegeral-c90c1.firebaseapp.com",
+    projectId: "controlegeral-c90c1"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+auth.onAuthStateChanged(async user=>{
+    if(!user){
+        location.href="index.html";
+        return;
+    }
+
+    await validarPermissao("relatorios");
+    carregarLojas();
+});
+
+async function validarPermissao(modulo){
+    const user = auth.currentUser;
+
+    const snapshot = await db.collection("usuarios")
+        .where("email","==",user.email)
+        .get();
+
+    snapshot.forEach(doc=>{
+        const dados = doc.data();
+
+        if(!dados.permissoes?.[modulo]){
+            alert("Sem permissão");
+            location.href="dashboard.html";
+        }
+    });
+}
+
+async function carregarLojas(){
+    const snapshot = await db.collection("lojas").get();
+
+    snapshot.forEach(doc=>{
+        const loja = doc.data();
+
+        document.getElementById("filtroLoja").innerHTML += `
+            <option value="${doc.id}">
+                ${loja.codigoLoja} - ${loja.nomeLoja}
+            </option>
+        `;
+    });
+}
+
+async function gerarPDF(){
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    const lojaFiltro = document.getElementById("filtroLoja").value;
+    const logoUrl = "https://raw.githubusercontent.com/romttech/sistem/main/logo%20rom.png";
+
+    function getBase64FromUrl(url){
+        return fetch(url)
+            .then(res => res.blob())
+            .then(blob => new Promise(resolve=>{
+                const reader = new FileReader();
+                reader.onloadend = ()=>resolve(reader.result);
+                reader.readAsDataURL(blob);
+            }));
+    }
+
+    const logoBase64 = await getBase64FromUrl(logoUrl);
+
+    pdf.addImage(logoBase64, "PNG", 75, 8, 60, 25);
+
+    pdf.setFontSize(16);
+    pdf.text("ROMTECH CONTROLE", 105, 42, {align:"center"});
+
+    pdf.setFontSize(13);
+    pdf.text("Relatório de Manutenção", 105, 50, {align:"center"});
+
+    pdf.setFontSize(9);
+    pdf.text(
+        "Gerado em: " + new Date().toLocaleString("pt-BR"),
+        105,
+        56,
+        {align:"center"}
+    );
+
+    let y = 70;
+
+    const snapshot = await db.collection("historicoManutencao").get();
+
+    let registros = [];
+
+    for(const doc of snapshot.docs){
+        const item = doc.data();
+
+        if(lojaFiltro && item.lojaId !== lojaFiltro) continue;
+        registros.push(item);
+    }
+
+    registros.sort((a,b)=>a.lojaId.localeCompare(b.lojaId));
+
+    let lojaAtual = "";
+
+    for(const item of registros){
+
+        let lojaNome = item.lojaId;
+        let pcNome = item.pcId;
+
+        if(item.lojaId){
+            const lojaDoc = await db.collection("lojas").doc(item.lojaId).get();
+            if(lojaDoc.exists){
+                const loja = lojaDoc.data();
+                lojaNome = `${loja.codigoLoja} | ${loja.nomeLoja}`;
+            }
+        }
+
+        if(item.pcId){
+            const pcDoc = await db.collection("computadores").doc(item.pcId).get();
+            if(pcDoc.exists){
+                const pc = pcDoc.data();
+                pcNome = `${pc.nomePC} - ${pc.patrimonio}`;
+            }
+        }
+
+        if(lojaAtual !== lojaNome){
+            y += 10;
+
+            pdf.setFillColor(30,58,138);
+            pdf.rect(10,y-5,190,8,"F");
+
+            pdf.setTextColor(255,255,255);
+            pdf.setFontSize(11);
+            pdf.text(lojaNome,12,y);
+
+            pdf.setTextColor(0,0,0);
+            lojaAtual = lojaNome;
+
+            y += 8;
+        }
+
+        pdf.setFontSize(9);
+
+        pdf.text(`Máquina: ${pcNome}`,10,y);
+        y += 5;
+
+        pdf.text(`Entrada/Data: ${item.dataAtualizacao}`,10,y);
+        y += 5;
+
+        pdf.text(`Defeito/Serviço: ${item.servicoRealizado}`,10,y);
+        y += 5;
+
+        pdf.text(`Status: ${item.statusManutencao}`,10,y);
+        y += 8;
+
+        pdf.line(10,y,200,y);
+        y += 5;
+
+        if(y > 270){
+            pdf.addPage();
+            y = 20;
+        }
+    }
+
+    const totalPages = pdf.internal.getNumberOfPages();
+
+    for(let i=1;i<=totalPages;i++){
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.text(
+            "RomTech Controle - Gestão de Ativos e Manutenção",
+            105,
+            290,
+            {align:"center"}
+        );
+    }
+
+    pdf.save("relatorio_manutencao_romtech.pdf");
+}
+</script>
+</body>
+</html>
