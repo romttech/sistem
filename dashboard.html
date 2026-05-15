@@ -126,6 +126,7 @@ canvas{
         <a href="lojas.html">Lojas</a>
         <a href="computadores.html">Computadores</a>
         <a href="upgrades.html">Upgrades</a>
+        <a href="manutencao.html">Manutenção</a>
         <a href="relatorios.html">Relatórios</a>
         <a href="admins.html">Admins</a>
         <button class="logout" onclick="logout()">Sair</button>
@@ -151,8 +152,8 @@ canvas{
         </div>
 
         <div class="card">
-            <h3>Upgrades Concluídos</h3>
-            <span id="concluidos">0</span>
+            <h3>Manutenções</h3>
+            <span id="totalManutencoes">0</span>
         </div>
     </div>
 
@@ -227,6 +228,7 @@ function aplicarPermissoes(permissoes){
         lojas:'a[href="lojas.html"]',
         computadores:'a[href="computadores.html"]',
         upgrades:'a[href="upgrades.html"]',
+        manutencao:'a[href="manutencao.html"]',
         relatorios:'a[href="relatorios.html"]',
         admins:'a[href="admins.html"]'
     };
@@ -254,7 +256,7 @@ async function carregarLojasFiltro(){
     });
 }
 
-async function filtrarPorLoja(){
+function filtrarPorLoja(){
     carregarDashboard(document.getElementById("filtroLoja").value);
 }
 
@@ -270,6 +272,9 @@ async function carregarDashboard(lojaId=""){
 
     const lojas = await db.collection("lojas").get();
     totalLojas.innerText = lojas.size;
+
+    const manutencoes = await db.collection("manutencao").get();
+    totalManutencoes.innerText = manutencoes.size;
 
     const upgrades = await db.collection("upgrades").get();
 
@@ -302,12 +307,7 @@ async function carregarDashboard(lojaId=""){
         }
     }
 
-    pendentesEl = document.getElementById("pendentes");
-    concluidosEl = document.getElementById("concluidos");
-
-    pendentesEl.innerText = pendentes;
-    concluidosEl.innerText = concluidos;
-
+    pendentes.innerText = pendentes;
     gerarGrafico(pendentes, concluidos);
 }
 
@@ -328,12 +328,8 @@ function gerarGrafico(pendentes, concluidos){
         },
         options:{
             responsive:true,
-            plugins:{
-                legend:{display:false}
-            },
-            scales:{
-                y:{beginAtZero:true}
-            }
+            plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true}}
         }
     });
 }
@@ -343,6 +339,5 @@ async function logout(){
     window.location.href = "index.html";
 }
 </script>
-
 </body>
 </html>
