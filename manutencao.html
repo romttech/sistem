@@ -19,7 +19,7 @@ body{
 
 .header{
     background:#1e3a8a;
-    color:white;
+    color:#fff;
     padding:18px 20px;
     display:flex;
     justify-content:space-between;
@@ -67,12 +67,12 @@ textarea{
 }
 
 button{
-    padding:12px 16px;
+    padding:10px 14px;
     border:none;
     border-radius:8px;
     cursor:pointer;
-    font-weight:bold;
     color:white;
+    font-weight:bold;
 }
 
 .btn-save{background:#2563eb;}
@@ -109,13 +109,8 @@ th{
 }
 
 @media(max-width:768px){
-    .container{
-        padding:12px;
-    }
-
-    button{
-        width:100%;
-    }
+    .container{padding:12px;}
+    button{width:100%;}
 }
 </style>
 </head>
@@ -194,9 +189,9 @@ th{
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
-  authDomain: "controlegeral-c90c1.firebaseapp.com",
-  projectId: "controlegeral-c90c1"
+    apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+    authDomain: "controlegeral-c90c1.firebaseapp.com",
+    projectId: "controlegeral-c90c1"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -208,7 +203,7 @@ let editId = null;
 
 auth.onAuthStateChanged(async user=>{
     if(!user){
-        location.href = "index.html";
+        location.href="index.html";
         return;
     }
 
@@ -220,55 +215,54 @@ auth.onAuthStateChanged(async user=>{
 async function validarPermissao(modulo){
     const user = auth.currentUser;
 
-    const snapshot = await db.collection("usuarios")
+    const snap = await db.collection("usuarios")
         .where("email","==",user.email)
         .get();
 
-    snapshot.forEach(doc=>{
+    snap.forEach(doc=>{
         const dados = doc.data();
+
         if(!dados.permissoes?.[modulo]){
             alert("Sem permissão");
-            location.href = "dashboard.html";
+            location.href="dashboard.html";
         }
     });
 }
 
 async function carregarLojas(){
-    const snapshot = await db.collection("lojas").get();
+    const snap = await db.collection("lojas").get();
 
-    snapshot.forEach(doc=>{
+    snap.forEach(doc=>{
         const loja = doc.data();
 
         lojaId.innerHTML += `
-            <option value="${doc.id}">
-                ${loja.codigoLoja} - ${loja.nomeLoja}
-            </option>
-        `;
+        <option value="${doc.id}">
+            ${loja.codigoLoja} - ${loja.nomeLoja}
+        </option>`;
     });
 }
 
 async function carregarComputadores(){
     pcId.innerHTML = `<option value="">Selecione Computador</option>`;
 
-    const snapshot = await db.collection("computadores")
+    const snap = await db.collection("computadores")
         .where("lojaId","==",lojaId.value)
         .get();
 
-    snapshot.forEach(doc=>{
+    snap.forEach(doc=>{
         const pc = doc.data();
 
         pcId.innerHTML += `
-            <option value="${doc.id}">
-                ${pc.nomePC} - ${pc.patrimonio}
-            </option>
-        `;
+        <option value="${doc.id}">
+            ${pc.nomePC} - ${pc.patrimonio}
+        </option>`;
     });
 }
 
 async function salvarManutencao(){
     const user = auth.currentUser;
 
-    const data = {
+    const dados = {
         lojaId: lojaId.value,
         pcId: pcId.value,
         tecnico: tecnico.value,
@@ -280,25 +274,44 @@ async function salvarManutencao(){
     };
 
     if(editId){
-        await db.collection("manutencao").doc(editId).update(data);
+        await db.collection("manutencao").doc(editId).update(dados);
     }else{
-        await db.collection("manutencao").add(data);
+        await db.collection("manutencao").add(dados);
     }
 
     location.reload();
 }
 
 async function listarManutencoes(){
-    const snapshot = await db.collection("manutencao").get();
+    const snap = await db.collection("manutencao").get();
     listaManutencao.innerHTML = "";
 
-    snapshot.forEach(doc=>{
+    for(const doc of snap.docs){
         const m = doc.data();
+
+        let nomeLoja = "-";
+        let nomePC = "-";
+
+        if(m.lojaId){
+            const lojaDoc = await db.collection("lojas").doc(m.lojaId).get();
+            if(lojaDoc.exists){
+                const loja = lojaDoc.data();
+                nomeLoja = `${loja.codigoLoja} - ${loja.nomeLoja}`;
+            }
+        }
+
+        if(m.pcId){
+            const pcDoc = await db.collection("computadores").doc(m.pcId).get();
+            if(pcDoc.exists){
+                const pc = pcDoc.data();
+                nomePC = `${pc.nomePC} - ${pc.patrimonio}`;
+            }
+        }
 
         listaManutencao.innerHTML += `
         <tr>
-            <td>${m.lojaId || '-'}</td>
-            <td>${m.pcId || '-'}</td>
+            <td>${nomeLoja}</td>
+            <td>${nomePC}</td>
             <td>${m.tecnico}</td>
             <td>${m.tipoManutencao}</td>
             <td>${m.statusManutencao}</td>
@@ -311,7 +324,7 @@ async function listarManutencoes(){
                 <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
             </td>
         </tr>`;
-    });
+    }
 }
 
 async function editar(id){
@@ -341,71 +354,79 @@ async function imprimirOS(id){
     const docSnap = await db.collection("manutencao").doc(id).get();
     const dados = docSnap.data();
 
-    const janela = window.open('', '', 'width=350,height=700');
+    let nomeLoja = "-";
+    let nomePC = "-";
 
-    janela.document.write(`
+    if(dados.lojaId){
+        const lojaDoc = await db.collection("lojas").doc(dados.lojaId).get();
+        if(lojaDoc.exists){
+            const loja = lojaDoc.data();
+            nomeLoja = `${loja.codigoLoja} - ${loja.nomeLoja}`;
+        }
+    }
+
+    if(dados.pcId){
+        const pcDoc = await db.collection("computadores").doc(dados.pcId).get();
+        if(pcDoc.exists){
+            const pc = pcDoc.data();
+            nomePC = `${pc.nomePC} - ${pc.patrimonio}`;
+        }
+    }
+
+    const win = window.open("", "", "width=350,height=700");
+
+    win.document.write(`
     <html>
     <head>
-    <title>OS</title>
     <style>
         body{
-            font-family: monospace;
+            font-family:monospace;
             width:72mm;
             padding:5px;
             font-size:12px;
-        }
-        h2,h3,p{
-            text-align:center;
-            margin:4px 0;
         }
         .linha{
             border-top:1px dashed #000;
             margin:8px 0;
         }
-        .campo{
-            margin-bottom:6px;
-            word-wrap:break-word;
-        }
     </style>
     </head>
     <body>
+        <h2 style="text-align:center;">ROMTECH CONTROLE</h2>
+        <h3 style="text-align:center;">ORDEM DE SERVIÇO</h3>
 
-    <h2>ROMTECH CONTROLE</h2>
-    <h3>ORDEM DE SERVIÇO</h3>
+        <div class="linha"></div>
 
-    <div class="linha"></div>
+        <p><b>Loja:</b> ${nomeLoja}</p>
+        <p><b>Computador:</b> ${nomePC}</p>
+        <p><b>Técnico:</b> ${dados.tecnico}</p>
+        <p><b>Tipo:</b> ${dados.tipoManutencao}</p>
+        <p><b>Status:</b> ${dados.statusManutencao}</p>
 
-    <div class="campo"><b>Loja:</b> ${dados.lojaId}</div>
-    <div class="campo"><b>PC:</b> ${dados.pcId}</div>
-    <div class="campo"><b>Técnico:</b> ${dados.tecnico}</div>
-    <div class="campo"><b>Tipo:</b> ${dados.tipoManutencao}</div>
-    <div class="campo"><b>Status:</b> ${dados.statusManutencao}</div>
+        <div class="linha"></div>
 
-    <div class="linha"></div>
+        <p><b>Serviço:</b><br>${dados.servicoRealizado}</p>
 
-    <div class="campo"><b>Serviço:</b><br>${dados.servicoRealizado}</div>
+        <div class="linha"></div>
 
-    <div class="linha"></div>
+        <p><b>Usuário:</b> ${dados.usuario}</p>
+        <p><b>Data:</b> ${dados.dataAtualizacao}</p>
 
-    <div class="campo"><b>Usuário:</b> ${dados.usuario}</div>
-    <div class="campo"><b>Data:</b> ${dados.dataAtualizacao}</div>
+        <br><br>
+        <p>______________________</p>
+        <p>Assinatura Técnico</p>
 
-    <br><br>
-    <p>______________________</p>
-    <p>Assinatura Técnico</p>
-
-    <script>
-        window.onload=function(){
-            window.print();
-            window.close();
-        }
-    <\/script>
-
+        <script>
+            window.onload=function(){
+                window.print();
+                window.close();
+            }
+        <\/script>
     </body>
     </html>
     `);
 
-    janela.document.close();
+    win.document.close();
 }
 </script>
 </body>
