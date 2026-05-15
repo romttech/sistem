@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório Manutenção</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+body{
+    font-family:Arial;
+    background:#f1f5f9;
+    padding:20px;
+}
+
+.box{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    max-width:1000px;
+    margin:auto;
+}
+
+select,button{
+    padding:12px;
+    margin:8px 0;
+    width:100%;
+}
+
+button{
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Relatório de Manutenção</h2>
+
+    <select id="filtroLoja">
+        <option value="">GERAL - Todas lojas</option>
+    </select>
+
+    <button onclick="gerarPDF()">Gerar PDF</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+ apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+ authDomain: "controlegeral-c90c1.firebaseapp.com",
+ projectId: "controlegeral-c90c1"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+window.onload = ()=>{
+    carregarLojas();
+};
+
+async function carregarLojas(){
+    const snap = await db.collection("lojas").get();
+
+    snap.forEach(doc=>{
+        const loja = doc.data();
+
+        filtroLoja.innerHTML += `
+        <option value="${doc.id}">
+            ${loja.codigoLoja} - ${loja.nomeLoja}
+        </option>`;
+    });
+}
+
+async function gerarPDF(){
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    const lojaFiltro = filtroLoja.value;
+
+    let query = db.collection("historicoManutencao");
+
+    const snap = await query.get();
+
+    let y = 20;
+
+    pdf.setFontSize(16);
+    pdf.text("Relatório de Manutenção", 10, 10);
+
+    let registros = [];
+
+    for(const doc of snap.docs){
+        const item = doc.data();
+
+        if(lojaFiltro && item.lojaId !== lojaFiltro) continue;
+
+        registros.push(item);
+    }
+
+    registros.sort((a,b)=>{
+        return a.lojaId.localeCompare(b.lojaId);
+    });
+
+    let lojaAtual = "";
+
+    for(const item of registros){
+
+        let lojaNome = item.lojaId;
+        let pcNome = item.pcId;
+
+        const lojaDoc = await db.collection("lojas").doc(item.lojaId).get();
+        if(lojaDoc.exists){
+            const loja = lojaDoc.data();
+            lojaNome = `${loja.codigoLoja} | ${loja.nomeLoja}`;
+        }
+
+        const pcDoc = await db.collection("computadores").doc(item.pcId).get();
+        if(pcDoc.exists){
+            const pc = pcDoc.data();
+            pcNome = `${pc.nomePC} - ${pc.patrimonio}`;
+        }
+
+        if(lojaAtual !== lojaNome){
+            y += 10;
+            pdf.setFontSize(13);
+            pdf.text(lojaNome,10,y);
+            lojaAtual = lojaNome;
+            y += 8;
+        }
+
+        pdf.setFontSize(10);
+
+        pdf.text(
+            `${pcNome} | ${item.dataAtualizacao} | ${item.servicoRealizado} | ${item.statusManutencao}`,
+            10,
+            y
+        );
+
+        y += 7;
+
+        if(y > 270){
+            pdf.addPage();
+            y = 20;
+        }
+    }
+
+    pdf.save("relatorio_manutencao.pdf");
+}
+</script>
+</body>
+</html>
