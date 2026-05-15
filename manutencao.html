@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manutenção - RomTech Controle</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f1f5f9;
+}
+
+.header{
+    background:#1e3a8a;
+    color:white;
+    padding:18px 20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+}
+
+.header a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:20px;
+}
+
+.box{
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+}
+
+input,select,textarea{
+    width:100%;
+    padding:12px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+    font-size:14px;
+}
+
+textarea{
+    height:90px;
+    resize:none;
+}
+
+button{
+    padding:12px 16px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    color:white;
+}
+
+.btn-save{background:#2563eb;}
+.btn-edit{background:#f59e0b;}
+.btn-delete{background:#ef4444;}
+
+.table-container{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    min-width:1200px;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid #e2e8f0;
+    text-align:left;
+    white-space:nowrap;
+}
+
+th{
+    background:#1e293b;
+    color:white;
+}
+
+.actions{
+    display:flex;
+    gap:6px;
+}
+
+@media(max-width:768px){
+    .container{padding:12px;}
+    button{width:100%;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Manutenção</h2>
+    <a href="dashboard.html">← Dashboard</a>
+</div>
+
+<div class="container">
+
+    <div class="box">
+        <div class="grid">
+            <select id="lojaId" onchange="carregarComputadores()">
+                <option value="">Selecione Loja</option>
+            </select>
+
+            <select id="pcId">
+                <option value="">Selecione Computador</option>
+            </select>
+
+            <input id="tecnico" placeholder="Técnico responsável">
+
+            <select id="tipoManutencao">
+                <option>Preventiva</option>
+                <option>Corretiva</option>
+                <option>Formatação</option>
+                <option>Troca de peça</option>
+                <option>Limpeza</option>
+                <option>Diagnóstico</option>
+            </select>
+
+            <select id="statusManutencao">
+                <option>Pendente</option>
+                <option>Em análise</option>
+                <option>Aprovado</option>
+                <option>Em andamento</option>
+                <option>Concluído</option>
+                <option>Não necessário</option>
+            </select>
+        </div>
+
+        <br>
+
+        <textarea id="servicoRealizado" placeholder="Descrição do serviço realizado"></textarea>
+
+        <br><br>
+        <button class="btn-save" onclick="salvarManutencao()">Salvar</button>
+    </div>
+
+    <div class="box table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Loja</th>
+                    <th>Computador</th>
+                    <th>Técnico</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Serviço</th>
+                    <th>Usuário</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="listaManutencao"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCOjMwl8DVQ73AVUa0H4eFBwQuAmLM_aKs",
+  authDomain: "controlegeral-c90c1.firebaseapp.com",
+  projectId: "controlegeral-c90c1"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let editId = null;
+
+auth.onAuthStateChanged(async user=>{
+    if(!user){
+        location.href = "index.html";
+        return;
+    }
+
+    await validarPermissao("manutencao");
+    carregarLojas();
+    listarManutencoes();
+});
+
+async function validarPermissao(modulo){
+    const user = auth.currentUser;
+
+    const snapshot = await db.collection("usuarios")
+        .where("email","==",user.email)
+        .get();
+
+    snapshot.forEach(doc=>{
+        const dados = doc.data();
+
+        if(!dados.permissoes?.[modulo]){
+            alert("Sem permissão");
+            location.href = "dashboard.html";
+        }
+    });
+}
+
+async function carregarLojas(){
+    const snapshot = await db.collection("lojas").get();
+
+    snapshot.forEach(doc=>{
+        const loja = doc.data();
+
+        lojaId.innerHTML += `
+            <option value="${doc.id}">
+                ${loja.codigoLoja} - ${loja.nomeLoja}
+            </option>
+        `;
+    });
+}
+
+async function carregarComputadores(){
+    pcId.innerHTML = `<option value="">Selecione Computador</option>`;
+
+    const snapshot = await db.collection("computadores")
+        .where("lojaId","==",lojaId.value)
+        .get();
+
+    snapshot.forEach(doc=>{
+        const pc = doc.data();
+
+        pcId.innerHTML += `
+            <option value="${doc.id}">
+                ${pc.nomePC} - ${pc.patrimonio}
+            </option>
+        `;
+    });
+}
+
+async function salvarManutencao(){
+    const user = auth.currentUser;
+
+    const data = {
+        lojaId: lojaId.value,
+        pcId: pcId.value,
+        tecnico: tecnico.value,
+        tipoManutencao: tipoManutencao.value,
+        statusManutencao: statusManutencao.value,
+        servicoRealizado: servicoRealizado.value,
+        usuario: user.email,
+        dataAtualizacao: new Date().toLocaleString("pt-BR")
+    };
+
+    if(editId){
+        await db.collection("manutencao").doc(editId).update(data);
+    }else{
+        await db.collection("manutencao").add(data);
+    }
+
+    location.reload();
+}
+
+async function listarManutencoes(){
+    const snapshot = await db.collection("manutencao").get();
+    listaManutencao.innerHTML = "";
+
+    for(const doc of snapshot.docs){
+        const m = doc.data();
+
+        listaManutencao.innerHTML += `
+        <tr>
+            <td>${m.lojaId || '-'}</td>
+            <td>${m.pcId || '-'}</td>
+            <td>${m.tecnico}</td>
+            <td>${m.tipoManutencao}</td>
+            <td>${m.statusManutencao}</td>
+            <td>${m.servicoRealizado}</td>
+            <td>${m.usuario}</td>
+            <td>${m.dataAtualizacao}</td>
+            <td class="actions">
+                <button class="btn-edit" onclick="editar('${doc.id}')">Editar</button>
+                <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
+            </td>
+        </tr>`;
+    }
+}
+
+async function editar(id){
+    const doc = await db.collection("manutencao").doc(id).get();
+    const m = doc.data();
+
+    lojaId.value = m.lojaId;
+    await carregarComputadores();
+
+    pcId.value = m.pcId;
+    tecnico.value = m.tecnico;
+    tipoManutencao.value = m.tipoManutencao;
+    statusManutencao.value = m.statusManutencao;
+    servicoRealizado.value = m.servicoRealizado;
+
+    editId = id;
+}
+
+async function excluir(id){
+    if(confirm("Excluir manutenção?")){
+        await db.collection("manutencao").doc(id).delete();
+        location.reload();
+    }
+}
+</script>
+</body>
+</html>
