@@ -78,6 +78,7 @@ button{
 .btn-save{background:#2563eb;}
 .btn-edit{background:#f59e0b;}
 .btn-delete{background:#ef4444;}
+.btn-print{background:#10b981;}
 
 .table-container{
     overflow-x:auto;
@@ -85,7 +86,7 @@ button{
 
 table{
     width:100%;
-    min-width:1200px;
+    min-width:1300px;
     border-collapse:collapse;
 }
 
@@ -104,11 +105,17 @@ th{
 .actions{
     display:flex;
     gap:6px;
+    flex-wrap:wrap;
 }
 
 @media(max-width:768px){
-    .container{padding:12px;}
-    button{width:100%;}
+    .container{
+        padding:12px;
+    }
+
+    button{
+        width:100%;
+    }
 }
 </style>
 </head>
@@ -219,7 +226,6 @@ async function validarPermissao(modulo){
 
     snapshot.forEach(doc=>{
         const dados = doc.data();
-
         if(!dados.permissoes?.[modulo]){
             alert("Sem permissão");
             location.href = "dashboard.html";
@@ -286,7 +292,7 @@ async function listarManutencoes(){
     const snapshot = await db.collection("manutencao").get();
     listaManutencao.innerHTML = "";
 
-    for(const doc of snapshot.docs){
+    snapshot.forEach(doc=>{
         const m = doc.data();
 
         listaManutencao.innerHTML += `
@@ -301,15 +307,16 @@ async function listarManutencoes(){
             <td>${m.dataAtualizacao}</td>
             <td class="actions">
                 <button class="btn-edit" onclick="editar('${doc.id}')">Editar</button>
+                <button class="btn-print" onclick="imprimirOS('${doc.id}')">Imprimir</button>
                 <button class="btn-delete" onclick="excluir('${doc.id}')">Excluir</button>
             </td>
         </tr>`;
-    }
+    });
 }
 
 async function editar(id){
-    const doc = await db.collection("manutencao").doc(id).get();
-    const m = doc.data();
+    const docSnap = await db.collection("manutencao").doc(id).get();
+    const m = docSnap.data();
 
     lojaId.value = m.lojaId;
     await carregarComputadores();
@@ -328,6 +335,77 @@ async function excluir(id){
         await db.collection("manutencao").doc(id).delete();
         location.reload();
     }
+}
+
+async function imprimirOS(id){
+    const docSnap = await db.collection("manutencao").doc(id).get();
+    const dados = docSnap.data();
+
+    const janela = window.open('', '', 'width=350,height=700');
+
+    janela.document.write(`
+    <html>
+    <head>
+    <title>OS</title>
+    <style>
+        body{
+            font-family: monospace;
+            width:72mm;
+            padding:5px;
+            font-size:12px;
+        }
+        h2,h3,p{
+            text-align:center;
+            margin:4px 0;
+        }
+        .linha{
+            border-top:1px dashed #000;
+            margin:8px 0;
+        }
+        .campo{
+            margin-bottom:6px;
+            word-wrap:break-word;
+        }
+    </style>
+    </head>
+    <body>
+
+    <h2>ROMTECH CONTROLE</h2>
+    <h3>ORDEM DE SERVIÇO</h3>
+
+    <div class="linha"></div>
+
+    <div class="campo"><b>Loja:</b> ${dados.lojaId}</div>
+    <div class="campo"><b>PC:</b> ${dados.pcId}</div>
+    <div class="campo"><b>Técnico:</b> ${dados.tecnico}</div>
+    <div class="campo"><b>Tipo:</b> ${dados.tipoManutencao}</div>
+    <div class="campo"><b>Status:</b> ${dados.statusManutencao}</div>
+
+    <div class="linha"></div>
+
+    <div class="campo"><b>Serviço:</b><br>${dados.servicoRealizado}</div>
+
+    <div class="linha"></div>
+
+    <div class="campo"><b>Usuário:</b> ${dados.usuario}</div>
+    <div class="campo"><b>Data:</b> ${dados.dataAtualizacao}</div>
+
+    <br><br>
+    <p>______________________</p>
+    <p>Assinatura Técnico</p>
+
+    <script>
+        window.onload=function(){
+            window.print();
+            window.close();
+        }
+    <\/script>
+
+    </body>
+    </html>
+    `);
+
+    janela.document.close();
 }
 </script>
 </body>
